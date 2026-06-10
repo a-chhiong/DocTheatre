@@ -1,0 +1,282 @@
+@import './variables.css';
+
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--border-radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Custom Glassmorphism styles */
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Print CSS for Clean PDF Export */
+@media print {
+  html, body {
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+  
+  /* Hide UI elements except the Previewer Panel */
+  app-header,
+  .folder-tree-col,
+  .editor-col,
+  .splitter-col,
+  .no-print {
+    display: none !important;
+  }
+  
+  .previewer-col {
+    width: 100% !important;
+    height: auto !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+  
+  .swagger-ui {
+    padding: 0 !important;
+  }
+
+  .swagger-ui .info {
+    margin: 0 0 20px 0 !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────
+   SWAGGER UI DARK MODE CUSTOM OVERRIDES
+──────────────────────────────────────────────────────── */
+html[data-theme="dark"] .swagger-ui {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+/* Optimize images and specific components in filtered Swagger UI */
+html[data-theme="dark"] .swagger-ui img,
+html[data-theme="dark"] .swagger-ui .microlight,
+html[data-theme="dark"] .swagger-ui pre,
+html[data-theme="dark"] .swagger-ui code {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* ────────────────────────────────────────────────────────
+   MARKDOWN RENDER STYLING (FOR COLUMN 3)
+──────────────────────────────────────────────────────── */
+.markdown-preview {
+  padding: 2.5rem;
+  line-height: 1.7;
+  font-size: 1.05rem;
+  overflow-y: auto;
+  height: 100%;
+  background-color: var(--bg-secondary);
+}
+
+.markdown-preview h1, 
+.markdown-preview h2, 
+.markdown-preview h3, 
+.markdown-preview h4 {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  margin-top: 1.8rem;
+  margin-bottom: 0.8rem;
+  font-weight: 700;
+}
+
+.markdown-preview h1 {
+  font-size: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.markdown-preview h2 {
+  font-size: 1.5rem;
+}
+
+.markdown-preview p {
+  margin-bottom: 1.2rem;
+  color: var(--text-primary);
+}
+
+.markdown-preview ul, 
+.markdown-preview ol {
+  margin-left: 2rem;
+  margin-bottom: 1.2rem;
+}
+
+.markdown-preview li {
+  margin-bottom: 0.4rem;
+}
+
+.markdown-preview a {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--transition-normal);
+}
+
+.markdown-preview a:hover {
+  border-bottom-color: var(--accent-color);
+}
+
+.markdown-preview pre {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 1.2rem;
+  margin-bottom: 1.2rem;
+  overflow-x: auto;
+}
+
+.markdown-preview code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background-color: var(--bg-tertiary);
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--border-radius-sm);
+  color: var(--accent-color);
+}
+
+.markdown-preview pre code {
+  background-color: transparent;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.markdown-preview blockquote {
+  border-left: 4px solid var(--accent-color);
+  padding: 0.8rem 1.2rem;
+  background-color: var(--bg-tertiary);
+  margin-bottom: 1.2rem;
+  font-style: italic;
+  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+}
+
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.markdown-preview th, 
+.markdown-preview td {
+  border: 1px solid var(--border-color);
+  padding: 0.8rem;
+  text-align: left;
+}
+
+.markdown-preview th {
+  background-color: var(--bg-tertiary);
+  font-weight: 600;
+}
+
+.markdown-preview tr:nth-child(even) {
+  background-color: var(--bg-primary);
+}
+
+/* Diagram Container Styling */
+.mermaid, 
+.plantuml-svg-container {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow-x: auto;
+}
+
+.plantuml-svg-container svg, 
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ────────────────────────────────────────────────────────
+   HIGHLIGHT.JS DARK MODE THEME STYLE OVERRIDES
+──────────────────────────────────────────────────────── */
+html[data-theme="dark"] .hljs {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+html[data-theme="dark"] .hljs-keyword,
+html[data-theme="dark"] .hljs-selector-tag,
+html[data-theme="dark"] .hljs-title,
+html[data-theme="dark"] .hljs-section {
+  color: #ff7b72; /* Salmon/red-orange key words */
+}
+html[data-theme="dark"] .hljs-string,
+html[data-theme="dark"] .hljs-meta,
+html[data-theme="dark"] .hljs-type,
+html[data-theme="dark"] .hljs-built_in,
+html[data-theme="dark"] .hljs-bullet {
+  color: #79c0ff; /* Muted blue strings/types */
+}
+html[data-theme="dark"] .hljs-number,
+html[data-theme="dark"] .hljs-literal,
+html[data-theme="dark"] .hljs-variable,
+html[data-theme="dark"] .hljs-template-variable,
+html[data-theme="dark"] .hljs-tag {
+  color: #a5d6ff; /* Soft cyan numbers/tags */
+}
+html[data-theme="dark"] .hljs-comment,
+html[data-theme="dark"] .hljs-quote {
+  color: #8b949e; /* Muted grey comments */
+  font-style: italic;
+}
+html[data-theme="dark"] .hljs-attr,
+html[data-theme="dark"] .hljs-attribute,
+html[data-theme="dark"] .hljs-name {
+  color: #7ee787; /* Light green attributes/properties */
+}
+html[data-theme="dark"] .hljs-emphasis {
+  font-style: italic;
+}
+html[data-theme="dark"] .hljs-strong {
+  font-weight: bold;
+}

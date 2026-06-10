@@ -1,0 +1,102 @@
+:root {
+  /* Common typography and sizing */
+  --font-sans: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;
+  --header-height: 56px;
+  --tabbar-height: 40px;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  /* HSL base tokens for Light Mode (overriden by [data-theme="dark"]) */
+  --hsl-bg-primary: 220 15% 97%;
+  --hsl-bg-secondary: 220 15% 100%;
+  --hsl-bg-tertiary: 220 15% 93%;
+  --hsl-text-primary: 220 25% 15%;
+  --hsl-text-secondary: 220 15% 45%;
+  --hsl-accent: 185 85% 40%;          /* Rich Teal */
+  --hsl-accent-hover: 185 85% 33%;
+  --hsl-border: 220 15% 86%;
+  --hsl-splitter-bg: 220 15% 86%;
+  --hsl-splitter-hover: 185 85% 40%;
+  --hsl-error: 0 85% 60%;
+  --hsl-success: 142 70% 45%;
+  
+  /* Resolved colors for standard classes */
+  --bg-primary: hsl(var(--hsl-bg-primary));
+  --bg-secondary: hsl(var(--hsl-bg-secondary));
+  --bg-tertiary: hsl(var(--hsl-bg-tertiary));
+  --text-primary: hsl(var(--hsl-text-primary));
+  --text-secondary: hsl(var(--hsl-text-secondary));
+  --accent-color: hsl(var(--hsl-accent));
+  --accent-hover: hsl(var(--hsl-accent-hover));
+  --border-color: hsl(var(--hsl-border));
+  --color-error: hsl(var(--hsl-error));
+  --color-success: hsl(var(--hsl-success));
+
+  /* Glassmorphism overlays */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+
+  /* Editor Syntax Highlighting - Light Mode */
+  --syntax-keyword: hsl(340, 75%, 45%);     /* Deep Rose */
+  --syntax-operator: hsl(220, 10%, 40%);
+  --syntax-meta: hsl(185, 80%, 35%);        /* Teal */
+  --syntax-string: hsl(120, 60%, 25%);      /* Forest Green */
+  --syntax-number: hsl(25, 85%, 45%);       /* Warm Orange */
+  --syntax-bool: hsl(25, 85%, 45%);
+  --syntax-null: hsl(25, 85%, 45%);
+  --syntax-comment: hsl(220, 10%, 60%);     /* Muted Grey */
+  --syntax-variable: hsl(220, 25%, 15%);
+  --syntax-type: hsl(260, 60%, 45%);        /* Purple */
+  --syntax-tag: hsl(340, 75%, 45%);
+  --syntax-heading: hsl(185, 85%, 35%);     /* Rich Teal Heading */
+  --syntax-list: hsl(185, 85%, 35%);
+  --syntax-url: hsl(200, 80%, 40%);
+  --syntax-link: hsl(200, 80%, 40%);
+  --syntax-property: hsl(220, 80%, 35%);    /* Blue */
+  --syntax-atom: hsl(25, 85%, 45%);
+  --syntax-attribute: hsl(260, 60%, 45%);
+}
+
+/* Dark Theme Overrides */
+html[data-theme="dark"] {
+  --hsl-bg-primary: 220 18% 10%;      /* Deep Charcoal/Navy */
+  --hsl-bg-secondary: 220 18% 13%;    /* Panel dark fill */
+  --hsl-bg-tertiary: 220 18% 17%;     /* Borders and selection backgrounds */
+  --hsl-text-primary: 220 10% 90%;    /* Soft white */
+  --hsl-text-secondary: 220 10% 62%;  /* Muted grey */
+  --hsl-accent: 185 80% 50%;          /* Glowing Neon Teal */
+  --hsl-accent-hover: 185 80% 42%;
+  --hsl-border: 220 18% 18%;
+  --hsl-splitter-bg: 220 18% 18%;
+  --hsl-splitter-hover: 185 80% 50%;
+  --hsl-error: 0 85% 65%;
+  --hsl-success: 142 75% 50%;
+  
+  --glass-bg: rgba(22, 26, 34, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+  /* Editor Syntax Highlighting - Dark Mode */
+  --syntax-keyword: hsl(340, 90%, 65%);     /* Bright Rose */
+  --syntax-operator: hsl(220, 10%, 75%);
+  --syntax-meta: hsl(185, 80%, 60%);        /* Teal */
+  --syntax-string: hsl(100, 60%, 65%);      /* Sage Green */
+  --syntax-number: hsl(35, 90%, 65%);       /* Bright Orange */
+  --syntax-bool: hsl(35, 90%, 65%);
+  --syntax-null: hsl(35, 90%, 65%);
+  --syntax-comment: hsl(220, 10%, 55%);     /* Muted Grey */
+  --syntax-variable: hsl(220, 10%, 90%);
+  --syntax-type: hsl(260, 80%, 75%);        /* Lavender */
+  --syntax-tag: hsl(340, 90%, 65%);
+  --syntax-heading: hsl(185, 80%, 60%);     /* Glowing Teal */
+  --syntax-list: hsl(185, 80%, 60%);
+  --syntax-url: hsl(200, 90%, 65%);
+  --syntax-link: hsl(200, 90%, 65%);
+  --syntax-property: hsl(210, 85%, 70%);    /* Soft Blue */
+  --syntax-atom: hsl(35, 90%, 65%);
+  --syntax-attribute: hsl(260, 80%, 75%);
+}
