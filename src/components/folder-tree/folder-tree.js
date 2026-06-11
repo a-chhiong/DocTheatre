@@ -1,14 +1,19 @@
 import { LitElement, html, css } from 'lit';
 import { projectManager } from '../../services/project-manager.js';
 
+// Lock/unlock SVG icons
+const lockIcon = html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+const unlockIcon = html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
+
 export class FolderTree extends LitElement {
   static properties = {
     files: { type: Array },
     activeFile: { type: Object },
-    collapsedPaths: { type: Object }, // Set of collapsed directory paths
+    collapsedPaths: { type: Object },
     projects: { type: Array },
     currentKey: { type: String },
-    projMenuOpen: { type: Boolean }
+    projMenuOpen: { type: Boolean },
+    locked: { type: Boolean }
   };
 
   static styles = css`
@@ -23,7 +28,7 @@ export class FolderTree extends LitElement {
 
     .tree-header {
       height: var(--tabbar-height);
-      padding: 0 16px;
+      padding: 0 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -37,7 +42,7 @@ export class FolderTree extends LitElement {
 
     .actions-bar {
       display: flex;
-      gap: 6px;
+      gap: 3px;
     }
 
     .icon-btn {
@@ -45,7 +50,7 @@ export class FolderTree extends LitElement {
       border: none;
       color: var(--text-secondary);
       cursor: pointer;
-      padding: 4px;
+      padding: 3px;
       border-radius: var(--border-radius-sm);
       display: flex;
       align-items: center;
@@ -72,12 +77,11 @@ export class FolderTree extends LitElement {
     .row {
       display: flex;
       align-items: center;
-      padding: 6px 12px 6px 0;
+      padding: 4px 8px 4px 0;
       cursor: pointer;
-      font-size: 0.88rem;
+      font-size: 0.82rem;
       color: var(--text-primary);
       transition: background-color var(--transition-normal);
-      group: hover;
     }
 
     .row:hover {
@@ -162,23 +166,23 @@ export class FolderTree extends LitElement {
       color: var(--accent-color);
     }
 
-    /* Project selector — sits naturally in tree-header */
+    /* Project selector */
     .project-trigger-btn {
       background: none;
       color: var(--text-primary);
       border: none;
-      padding: 2px 24px 2px 6px;
-      font-size: 0.75rem;
+      padding: 2px 20px 2px 4px;
+      font-size: 0.7rem;
       font-family: var(--font-sans);
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       transition: background-color var(--transition-normal), color var(--transition-normal);
       position: relative;
       user-select: none;
-      max-width: 140px;
+      max-width: 130px;
       border-radius: var(--border-radius-sm);
     }
 
@@ -186,7 +190,7 @@ export class FolderTree extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 110px;
+      max-width: 100px;
     }
 
     .project-trigger-btn:hover {
@@ -201,8 +205,8 @@ export class FolderTree extends LitElement {
       transform: translateY(-50%);
       pointer-events: none;
       color: var(--text-secondary);
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       transition: transform var(--transition-normal);
     }
 
@@ -286,6 +290,7 @@ export class FolderTree extends LitElement {
     this.projects = [];
     this.currentKey = '';
     this.projMenuOpen = false;
+    this.locked = true;
     this.subs = [];
   }
 
@@ -300,6 +305,7 @@ export class FolderTree extends LitElement {
       }
       this.currentKey = key;
     }));
+    this.subs.push(projectManager.locked$.subscribe(l => this.locked = l));
 
     // Close dropdown when clicking outside
     this._clickOutsideHandler = (e) => {
@@ -501,9 +507,9 @@ export class FolderTree extends LitElement {
 
         <span class="label" title=${node.path}>${node.name}</span>
 
-        <!-- Panel Hover actions -->
+        <!-- Panel Hover actions (hidden when locked) -->
         <div class="row-actions">
-          ${isDir 
+          ${!this.locked && isDir
             ? html`
                 <button class="row-btn" title="Add File" @click=${(e) => { e.stopPropagation(); this.promptCreateFile(node.path); }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -514,12 +520,17 @@ export class FolderTree extends LitElement {
               `
             : ''
           }
-          <button class="row-btn" title="Rename" @click=${(e) => this.handleRenameNode(e, node.path, node.type)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
-          </button>
-          <button class="row-btn" style="color: var(--color-error);" title="Delete" @click=${(e) => this.handleDeleteNode(e, node.path, node.type)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
+          ${!this.locked
+            ? html`
+                <button class="row-btn" title="Rename" @click=${(e) => this.handleRenameNode(e, node.path, node.type)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
+                </button>
+                <button class="row-btn" style="color: var(--color-error);" title="Delete" @click=${(e) => this.handleDeleteNode(e, node.path, node.type)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+              `
+            : ''
+          }
         </div>
       </div>
     `;
@@ -556,12 +567,19 @@ export class FolderTree extends LitElement {
           ` : ''}
         </div>
         <div class="actions-bar">
-          <button class="icon-btn" title="Create Root File" @click=${() => this.promptCreateFile('')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          <!-- Lock toggle -->
+          <button class="icon-btn" title="${this.locked ? 'Unlock to allow edits' : 'Lock to view-only'}" @click=${() => projectManager.toggleLock()}>
+            ${this.locked ? lockIcon : unlockIcon}
           </button>
-          <button class="icon-btn" title="Create Root Folder" @click=${() => this.promptCreateFolder('')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
-          </button>
+          <!-- Root CRUD (hidden when locked) -->
+          ${!this.locked ? html`
+            <button class="icon-btn" title="Create Root File" @click=${() => this.promptCreateFile('')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            </button>
+            <button class="icon-btn" title="Create Root Folder" @click=${() => this.promptCreateFolder('')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+            </button>
+          ` : ''}
         </div>
       </div>
       

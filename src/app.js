@@ -12,7 +12,9 @@ import './components/layout/app-header.js';
 import './components/folder-tree/folder-tree.js';
 import './components/editor/tab-bar.js';
 import './components/editor/code-editor.js';
-import './components/previewer/swagger-previewer.js';
+import './components/viewer/code-viewer.js';
+import './components/layout/menu-dropdown.js';
+import './components/layout/panel-toggles.js';
 
 export class AppRoot extends LitElement {
   static properties = {
@@ -227,7 +229,7 @@ export class AppRoot extends LitElement {
         </div>
 
         <!-- Column 3 slot -->
-        <swagger-previewer slot="preview"></swagger-previewer>
+        <code-viewer slot="preview"></code-viewer>
       </workspace-layout>
     `;
   }

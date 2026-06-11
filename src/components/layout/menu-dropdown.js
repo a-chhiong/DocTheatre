@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { projectManager } from '../../services/project-manager.js';
 
-export class AppHeaderDropdown extends LitElement {
+export class MenuDropdown extends LitElement {
   static properties = {
     currentKey: { type: String },
     importMenuOpen: { type: Boolean },
@@ -267,4 +267,4 @@ export class AppHeaderDropdown extends LitElement {
   }
 }
 
-customElements.define('app-header-dropdown', AppHeaderDropdown);
+customElements.define('menu-dropdown', MenuDropdown);

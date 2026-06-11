@@ -29,7 +29,6 @@ export class TabBar extends LitElement {
       overflow-y: hidden;
     }
 
-    /* Hide standard scrollbars for clean looks */
     .tabs-container::-webkit-scrollbar {
       display: none;
     }
@@ -37,14 +36,14 @@ export class TabBar extends LitElement {
     .tab {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 0 16px;
+      gap: 5px;
+      padding: 0 10px;
       height: 100%;
       border-right: 1px solid var(--border-color);
       background-color: var(--bg-secondary);
       color: var(--text-secondary);
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-family: var(--font-sans);
       font-weight: 500;
       position: relative;
@@ -68,11 +67,11 @@ export class TabBar extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       color: var(--text-secondary);
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       transition: background-color var(--transition-normal), color var(--transition-normal);
     }
 
@@ -148,7 +147,11 @@ export class TabBar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.subs.push(projectManager.openTabs$.subscribe(t => this.tabs = t));
-    this.subs.push(projectManager.activeFile$.subscribe(af => this.activeFile = af));
+    this.subs.push(projectManager.activeFile$.subscribe(af => {
+      this.activeFile = af;
+      // Delay scroll to allow rendering after activeFile change
+      setTimeout(() => this.scrollToActiveTab(), 10);
+    }));
     this.subs.push(projectManager.lineNumbers$.subscribe(ln => this.lineNumbers = ln));
   }
 
@@ -214,6 +217,18 @@ export class TabBar extends LitElement {
     rearranged.splice(targetIndex, 0, draggedTab);
 
     projectManager.reorderTabs(rearranged);
+  }
+
+  /**
+   * Scroll the active tab into view within the scrollable tabs container
+   */
+  scrollToActiveTab() {
+    if (!this.activeFile) return;
+    const container = this.shadowRoot.querySelector('.tabs-container');
+    const activeTab = container && container.querySelector('.tab.active');
+    if (activeTab) {
+      activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
   }
 
   render() {

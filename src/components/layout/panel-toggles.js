@@ -11,14 +11,14 @@ export class PanelToggles extends LitElement {
     :host {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
 
     .btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 8px;
+      padding: 5px;
       background-color: var(--bg-primary);
       border: 1px solid var(--border-color);
       border-radius: var(--border-radius-sm);
@@ -26,8 +26,8 @@ export class PanelToggles extends LitElement {
       cursor: pointer;
       transition: background-color var(--transition-normal), border-color var(--transition-normal);
       aspect-ratio: 1;
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       box-sizing: border-box;
     }
 
@@ -43,8 +43,8 @@ export class PanelToggles extends LitElement {
     }
 
     .btn svg {
-      width: 18px;
-      height: 18px;
+      width: 15px;
+      height: 15px;
       display: block;
     }
   `;

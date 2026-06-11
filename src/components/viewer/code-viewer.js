@@ -7,7 +7,7 @@ import SwaggerUI from 'swagger-ui-dist/swagger-ui-bundle.js';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 
-export class SwaggerPreviewer extends LitElement {
+export class CodeViewer extends LitElement {
   static properties = {
     activeFile: { type: Object },
     files: { type: Array },
@@ -240,4 +240,4 @@ export class SwaggerPreviewer extends LitElement {
   }
 }
 
-customElements.define('swagger-previewer', SwaggerPreviewer);
+customElements.define('code-viewer', CodeViewer);

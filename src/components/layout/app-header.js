@@ -1,7 +1,5 @@
 import { LitElement, html, css } from 'lit';
 import { projectManager } from '../../services/project-manager.js';
-import './app-header-dropdown.js';
-import './panel-toggles.js';
 
 export class AppHeader extends LitElement {
   static properties = {
@@ -21,7 +19,7 @@ export class AppHeader extends LitElement {
       justify-content: space-between;
       height: var(--header-height);
       width: 100%;
-      padding: 0 3rem;
+      padding: 0 1.5rem;
       box-sizing: border-box;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
@@ -32,51 +30,49 @@ export class AppHeader extends LitElement {
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding-left: 1rem;
+      gap: 6px;
+      padding-left: 0.5rem;
     }
 
     .logo {
-      width: 28px;
-      height: 28px;
+      width: 22px;
+      height: 22px;
       background: linear-gradient(135deg, var(--accent-color), #89b4fa);
-      border-radius: 6px;
+      border-radius: 5px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #ffffff;
       font-weight: 800;
-      font-size: 1.1rem;
-      box-shadow: 0 0 12px rgba(20, 184, 166, 0.4);
+      font-size: 0.9rem;
+      box-shadow: 0 0 10px rgba(20, 184, 166, 0.35);
     }
 
     .title {
-      font-size: 1.25rem;
+      font-size: 1rem;
       font-weight: 700;
       color: var(--text-primary);
       letter-spacing: -0.02em;
     }
 
-    /* Project Picker Container — moved to folder-tree */
-
     /* Actions buttons */
     .controls {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding-right: 1rem;
+      gap: 6px;
+      padding-right: 0.5rem;
     }
 
     .btn {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
+      gap: 4px;
+      padding: 4px 8px;
       background-color: var(--bg-primary);
       border: 1px solid var(--border-color);
       border-radius: var(--border-radius-sm);
       color: var(--text-primary);
-      font-size: 0.88rem;
+      font-size: 0.8rem;
       font-weight: 500;
       font-family: var(--font-sans);
       cursor: pointer;
@@ -102,7 +98,7 @@ export class AppHeader extends LitElement {
     }
 
     .btn-icon {
-      padding: 8px;
+      padding: 6px;
       border-radius: var(--border-radius-sm);
       aspect-ratio: 1;
       justify-content: center;
@@ -120,14 +116,14 @@ export class AppHeader extends LitElement {
     }
 
     svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
 
     .menu-indicator {
       display: inline-block;
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       background-color: var(--accent-color);
       border-radius: 50%;
       margin-left: auto;
@@ -239,10 +235,10 @@ export class AppHeader extends LitElement {
 
           <!-- Dropdown structure -->
           ${this.menuOpen ? html`
-            <app-header-dropdown
+            <menu-dropdown
               .currentKey=${this.currentKey}
               @close-menu=${() => this.menuOpen = false}
-            ></app-header-dropdown>
+            ></menu-dropdown>
           ` : ''}
         </div>
       </div>

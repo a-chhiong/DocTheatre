@@ -14,6 +14,7 @@ export class ProjectManager {
     this.openTabs$ = new BehaviorSubject([]);
     this.theme$ = new BehaviorSubject('light');
     this.lineNumbers$ = new BehaviorSubject(true);
+    this.locked$ = new BehaviorSubject(true); // default locked per-project
 
     // Subject for autosave debounce
     this.autosaveSubject$ = new Subject();
@@ -93,6 +94,22 @@ export class ProjectManager {
   }
 
   /**
+   * Toggle lock mode for the current project
+   */
+  toggleLock() {
+    const next = !this.locked$.value;
+    this.locked$.next(next);
+    // Persist locked state to project metadata
+    const key = this.currentProjectKey$.value;
+    const projects = this.projects$.value;
+    const project = projects.find(p => p.key === key);
+    if (project) {
+      project.locked = next;
+      dbService.saveProject(project);
+    }
+  }
+
+  /**
    * Create new project key with template structure
    * @param {string} name
    * @param {boolean} cleanStart
@@ -105,6 +122,7 @@ export class ProjectManager {
       name,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      locked: true, // default locked
       activeFile,
       openTabs: [activeFile]
     };
@@ -153,8 +171,11 @@ paths: {}
     const files = await dbService.getProjectFiles(key);
     this.files$.next(files);
 
+    // Sync locked state from project metadata
+    this.locked$.next(project.locked !== false); // default to true
+
     // Load tabs - filter out any paths that do not exist as files in project
-    const openTabs = (project.openTabs || []).filter(tab => 
+    const openTabs = (project.openTabs || []).filter(tab =>
       files.some(f => f.path === tab && f.type === 'file')
     );
     this.openTabs$.next(openTabs);

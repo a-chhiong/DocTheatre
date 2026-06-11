@@ -2,8 +2,8 @@
   /* Common typography and sizing */
   --font-sans: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;
-  --header-height: 56px;
-  --tabbar-height: 40px;
+  --header-height: 38px;
+  --tabbar-height: 30px;
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --border-radius-sm: 4px;
   --border-radius-md: 8px;

@@ -2,192 +2,26 @@ import { LitElement, html, css } from 'lit';
 import { projectManager } from '../../services/project-manager.js';
 
 // CodeMirror imports
-import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, lineNumbers, highlightActiveLineGutter, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view";
+import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, lineNumbers, highlightActiveLineGutter } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { yaml } from "@codemirror/lang-yaml";
 import { markdown } from "@codemirror/lang-markdown";
-import { syntaxHighlighting, bracketMatching, foldGutter, StreamLanguage, LanguageDescription, LanguageSupport, HighlightStyle } from "@codemirror/language";
+import { syntaxHighlighting, bracketMatching, foldGutter } from "@codemirror/language";
 import { autocompletion } from "@codemirror/autocomplete";
-import { tags as t } from "@lezer/highlight";
 
-// ─── CUSTOM PLANTUML LANGUAGE MODE ───
-const plantumlLanguage = StreamLanguage.define({
-  name: "plantuml",
-  token(stream) {
-    if (stream.match(/^@startuml/) || stream.match(/^@enduml/)) {
-      return "meta";
-    }
-    if (stream.match(/^\s*(actor|boundary|control|entity|database|collections|queue|class|interface|state|usecase|component|node|folder|frame|cloud|database|storage|agent|artifact|card|file|package|rectangle|queue|stack)\b/)) {
-      return "keyword";
-    }
-    if (stream.match(/^\s*(title|header|footer|legend|caption|right|left|center|as|autonumber|activate|deactivate|alt|else|opt|loop|par|critical|option|break|note|over|of|to|link|click)\b/)) {
-      return "keyword";
-    }
-    if (stream.match(/^'[^\n]*/) || stream.match(/^\/'[\s\S]*?'\//)) {
-      return "comment";
-    }
-    if (stream.match(/^"[^"]*"/) || stream.match(/^'[^']*'/)) {
-      return "string";
-    }
-    if (stream.match(/^[-=.>|<()]+/)) {
-      return "operator";
-    }
-    if (stream.match(/^\d+/)) {
-      return "number";
-    }
-    if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) {
-      return "variableName";
-    }
-    stream.next();
-    return null;
-  }
-});
-const plantumlSupport = new LanguageSupport(plantumlLanguage);
+// OpenStudio highlight infrastructure (language modes, theme, styles, decorators)
+import {
+  plantumlSupport,
+  mermaidSupport,
+  codeLanguages,
+  specStudioEditorTheme,
+  specStudioHighlightStyle,
+  refLinkPlugin
+} from '../../services/high-light.js';
 
-// ─── CUSTOM MERMAID LANGUAGE MODE ───
-const mermaidLanguage = StreamLanguage.define({
-  name: "mermaid",
-  token(stream) {
-    if (stream.match(/^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|quadrantChart|requirementDiagram|gitGraph|C4Context|mindmap|timeline|zenuml)\b/)) {
-      return "meta";
-    }
-    if (stream.match(/^\s*(participant|actor|boundary|control|entity|database|collections|queue|as|box|create|destroy|autonumber|activate|deactivate|alt|else|opt|loop|par|and|rect|critical|option|break|note|over|of|to|link|click|style|classDef|class|click|subgraph|end)\b/)) {
-      return "keyword";
-    }
-    if (stream.match(/^%%[^\n]*/)) {
-      return "comment";
-    }
-    if (stream.match(/^"[^"]*"/) || stream.match(/^'[^']*'/)) {
-      return "string";
-    }
-    if (stream.match(/^[-=>.():|&]+/)) {
-      return "operator";
-    }
-    if (stream.match(/^\d+/)) {
-      return "number";
-    }
-    if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) {
-      return "variableName";
-    }
-    stream.next();
-    return null;
-  }
-});
-const mermaidSupport = new LanguageSupport(mermaidLanguage);
-
-// ─── NESTED LANGUAGES FOR MARKDOWN CODE BLOCKS ───
-const codeLanguages = [
-  LanguageDescription.of({
-    name: "plantuml",
-    alias: ["puml"],
-    load: async () => plantumlSupport
-  }),
-  LanguageDescription.of({
-    name: "mermaid",
-    alias: ["mmd"],
-    load: async () => mermaidSupport
-  }),
-  LanguageDescription.of({
-    name: "yaml",
-    alias: ["yml"],
-    load: async () => {
-      const { yaml } = await import("@codemirror/lang-yaml");
-      return yaml();
-    }
-  }),
-  LanguageDescription.of({
-    name: "markdown",
-    alias: ["md"],
-    load: async () => {
-      const { markdown } = await import("@codemirror/lang-markdown");
-      return markdown();
-    }
-  })
-];
-
-// ─── OPENSTUDIO DYNAMIC THEME DEFINITIONS ───
-const specStudioEditorTheme = EditorView.theme({
-  "&": {
-    color: "var(--text-primary)",
-    backgroundColor: "var(--bg-secondary)",
-    height: "100%"
-  },
-  ".cm-content": {
-    caretColor: "var(--accent-color)"
-  },
-  "&.cm-focused .cm-cursor": {
-    borderLeftColor: "var(--accent-color)"
-  },
-  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-    backgroundColor: "var(--bg-tertiary)"
-  },
-  ".cm-gutters": {
-    backgroundColor: "var(--bg-primary)",
-    color: "var(--text-secondary)",
-    borderRight: "1px solid var(--border-color)"
-  },
-  ".cm-activeLine": {
-    backgroundColor: "rgba(128, 128, 128, 0.04)"
-  },
-  ".cm-activeLineGutter": {
-    backgroundColor: "rgba(128, 128, 128, 0.08)",
-    color: "var(--text-primary)"
-  },
-  ".cm-foldPlaceholder": {
-    backgroundColor: "transparent",
-    border: "none",
-    color: "var(--text-secondary)"
-  }
-});
-
-const specStudioHighlightStyle = HighlightStyle.define([
-  { tag: t.keyword, color: "var(--syntax-keyword)" },
-  { tag: t.operator, color: "var(--syntax-operator)" },
-  { tag: t.meta, color: "var(--syntax-meta)" },
-  { tag: t.string, color: "var(--syntax-string)" },
-  { tag: t.number, color: "var(--syntax-number)" },
-  { tag: t.bool, color: "var(--syntax-bool)" },
-  { tag: t.null, color: "var(--syntax-null)" },
-  { tag: t.comment, color: "var(--syntax-comment)", fontStyle: "italic" },
-  { tag: t.variableName, color: "var(--syntax-variable)" },
-  { tag: t.typeName, color: "var(--syntax-type)" },
-  { tag: t.tagName, color: "var(--syntax-tag)" },
-  { tag: t.heading, color: "var(--syntax-heading)", fontWeight: "bold" },
-  { tag: t.heading1, color: "var(--syntax-heading)", fontWeight: "bold", fontSize: "1.3em" },
-  { tag: t.heading2, color: "var(--syntax-heading)", fontWeight: "bold", fontSize: "1.2em" },
-  { tag: t.heading3, color: "var(--syntax-heading)", fontWeight: "bold", fontSize: "1.1em" },
-  { tag: t.list, color: "var(--syntax-list)" },
-  { tag: t.strong, fontWeight: "bold" },
-  { tag: t.emphasis, fontStyle: "italic" },
-  { tag: t.url, color: "var(--syntax-url)", textDecoration: "underline" },
-  { tag: t.link, color: "var(--syntax-link)" },
-  { tag: t.propertyName, color: "var(--syntax-property)" },
-  { tag: t.atom, color: "var(--syntax-atom)" },
-  { tag: t.attributeName, color: "var(--syntax-attribute)" }
-]);
-
-// Match decorator to scan and visual-link $ref relative path statements in Editor
-const refLinkDecorator = new MatchDecorator({
-  regexp: /\$ref\s*:\s*['"]?([^'"]+)['"]?/g,
-  decoration: (match) => {
-    return Decoration.mark({
-      class: "cm-ref-link",
-      attributes: { title: "Click to follow reference link" }
-    });
-  }
-});
-
-const refLinkPlugin = ViewPlugin.fromClass(class {
-  constructor(view) {
-    this.decorations = refLinkDecorator.createDeco(view);
-  }
-  update(update) {
-    this.decorations = refLinkDecorator.updateDeco(update, this.decorations);
-  }
-}, {
-  decorations: v => v.decorations
-});
+// All highlight infrastructure (language modes, theme, styles, decorators)
+// has been extracted to high-light.js and imported above.
 
 export class CodeEditor extends LitElement {
   static properties = {
@@ -265,6 +99,7 @@ export class CodeEditor extends LitElement {
     this.activeFile = null;
     this.theme = 'light';
     this.visibleLineNumbers = true;
+    this.locked = true;
     
     this.editorView = null;
     this.subs = [];
@@ -273,6 +108,7 @@ export class CodeEditor extends LitElement {
     this.themeCompartment = new Compartment();
     this.lineNumbersCompartment = new Compartment();
     this.langCompartment = new Compartment();
+    this.readOnlyCompartment = new Compartment();
   }
 
   connectedCallback() {
@@ -304,6 +140,11 @@ export class CodeEditor extends LitElement {
     this.subs.push(projectManager.lineNumbers$.subscribe(ln => {
       this.visibleLineNumbers = ln;
       this.updateEditorLineNumbers();
+    }));
+
+    this.subs.push(projectManager.locked$.subscribe(l => {
+      this.locked = l;
+      this.updateEditorReadOnly();
     }));
 
     this._resizeHandler = () => {
@@ -371,17 +212,20 @@ export class CodeEditor extends LitElement {
         ...historyKeymap
       ]),
 
-      // Theme toggle compartment (simply informs CM6 about dark setting)
+      // Theme toggle compartment
       this.themeCompartment.of(EditorView.theme({}, { dark: this.theme === 'dark' })),
 
       // Line numbers toggle compartment
       this.lineNumbersCompartment.of(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []),
 
+      // Read-only toggle compartment
+      this.readOnlyCompartment.of(EditorView.editable.of(!this.locked)),
+
       // Language mode detection
       this.langCompartment.of(
-        isYaml ? yaml() : 
-        (isMd ? markdown({ codeLanguages }) : 
-        (isPuml ? plantumlSupport : 
+        isYaml ? yaml() :
+        (isMd ? markdown({ codeLanguages }) :
+        (isPuml ? plantumlSupport :
         (isMermaid ? mermaidSupport : [])))
       ),
 
@@ -432,6 +276,13 @@ export class CodeEditor extends LitElement {
     if (!this.editorView) return;
     this.editorView.dispatch({
       effects: this.lineNumbersCompartment.reconfigure(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : [])
+    });
+  }
+
+  updateEditorReadOnly() {
+    if (!this.editorView) return;
+    this.editorView.dispatch({
+      effects: this.readOnlyCompartment.reconfigure(EditorView.editable.of(!this.locked))
     });
   }
 
