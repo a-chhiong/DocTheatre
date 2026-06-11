@@ -5,7 +5,10 @@ export class FolderTree extends LitElement {
   static properties = {
     files: { type: Array },
     activeFile: { type: Object },
-    collapsedPaths: { type: Object } // Set of collapsed directory paths
+    collapsedPaths: { type: Object }, // Set of collapsed directory paths
+    projects: { type: Array },
+    currentKey: { type: String },
+    projMenuOpen: { type: Boolean }
   };
 
   static styles = css`
@@ -28,12 +31,8 @@ export class FolderTree extends LitElement {
       box-sizing: border-box;
     }
 
-    .tree-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      font-weight: 700;
-      color: var(--text-secondary);
-      letter-spacing: 0.05em;
+    .project-selector-wrapper {
+      position: relative;
     }
 
     .actions-bar {
@@ -162,6 +161,117 @@ export class FolderTree extends LitElement {
     .row.active .file-icon {
       color: var(--accent-color);
     }
+
+    /* Project selector — sits naturally in tree-header */
+    .project-trigger-btn {
+      background: none;
+      color: var(--text-primary);
+      border: none;
+      padding: 2px 24px 2px 6px;
+      font-size: 0.75rem;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+      position: relative;
+      user-select: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+      border-radius: var(--border-radius-sm);
+    }
+
+    .project-trigger-btn:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--accent-color);
+    }
+
+    .select-arrow {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-secondary);
+      width: 10px;
+      height: 10px;
+      transition: transform var(--transition-normal);
+    }
+
+    .select-arrow.open {
+      transform: translateY(-50%) rotate(180deg);
+    }
+
+    /* Dropdown container */
+    .project-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--border-radius-md);
+      box-shadow: var(--glass-shadow);
+      min-width: 180px;
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      padding: 6px;
+      animation: slideDown 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .project-dropdown-item {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      font-family: var(--font-sans);
+      text-align: left;
+      border-radius: var(--border-radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: background-color var(--transition-normal), color var(--transition-normal);
+    }
+
+    .project-dropdown-item:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--accent-color);
+    }
+
+    .project-dropdown-item.active {
+      font-weight: 600;
+      color: var(--accent-color);
+      background-color: rgba(20, 184, 166, 0.08);
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .menu-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-color);
+      border-radius: 50%;
+      margin-left: auto;
+    }
   `;
 
   constructor() {
@@ -169,6 +279,9 @@ export class FolderTree extends LitElement {
     this.files = [];
     this.activeFile = null;
     this.collapsedPaths = new Set();
+    this.projects = [];
+    this.currentKey = '';
+    this.projMenuOpen = false;
     this.subs = [];
   }
 
@@ -176,11 +289,23 @@ export class FolderTree extends LitElement {
     super.connectedCallback();
     this.subs.push(projectManager.files$.subscribe(f => this.files = f));
     this.subs.push(projectManager.activeFile$.subscribe(af => this.activeFile = af));
+    this.subs.push(projectManager.projects$.subscribe(p => this.projects = p));
+    this.subs.push(projectManager.currentProjectKey$.subscribe(key => this.currentKey = key));
+
+    // Close dropdown when clicking outside
+    this._clickOutsideHandler = (e) => {
+      if (this.projMenuOpen && !e.composedPath().some(el => el.classList && el.classList.contains('project-dropdown'))) {
+        this.projMenuOpen = false;
+        this.requestUpdate();
+      }
+    };
+    window.addEventListener('click', this._clickOutsideHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.subs.forEach(s => s.unsubscribe());
+    window.removeEventListener('click', this._clickOutsideHandler);
   }
 
   toggleFolder(path) {
@@ -195,6 +320,11 @@ export class FolderTree extends LitElement {
 
   handleFileClick(path) {
     projectManager.openTab(path);
+  }
+
+  selectProject(key) {
+    projectManager.switchProject(key);
+    this.projMenuOpen = false;
   }
 
   // Create Operations
@@ -388,10 +518,34 @@ export class FolderTree extends LitElement {
 
   render() {
     const tree = this.buildTree(this.files);
+    const currentProject = this.projects.find(p => p.key === this.currentKey);
 
     return html`
       <div class="tree-header">
-        <span class="tree-title">Files Explorer</span>
+        <div class="project-selector-wrapper">
+          <button class="project-trigger-btn"
+            @click=${(e) => { e.stopPropagation(); this.projMenuOpen = !this.projMenuOpen; }}
+          >
+            <span>${currentProject ? currentProject.name : 'Select'}</span>
+            <svg class="select-arrow ${this.projMenuOpen ? 'open' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          
+          ${this.projMenuOpen ? html`
+            <div class="project-dropdown">
+              ${this.projects.map(p => html`
+                <button 
+                  class="project-dropdown-item ${p.key === this.currentKey ? 'active' : ''}"
+                  @click=${() => this.selectProject(p.key)}
+                >
+                  <span>${p.name}</span>
+                  ${p.key === this.currentKey ? html`<span class="menu-indicator"></span>` : ''}
+                </button>
+              `)}
+            </div>
+          ` : ''}
+        </div>
         <div class="actions-bar">
           <button class="icon-btn" title="Create Root File" @click=${() => this.promptCreateFile('')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>

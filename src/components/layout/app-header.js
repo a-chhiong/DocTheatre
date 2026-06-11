@@ -3,8 +3,6 @@ import { projectManager } from '../../services/project-manager.js';
 
 export class AppHeader extends LitElement {
   static properties = {
-    projects: { type: Array },
-    currentKey: { type: String },
     theme: { type: String },
     lineNumbers: { type: Boolean },
     treeVisible: { type: Boolean },
@@ -13,7 +11,6 @@ export class AppHeader extends LitElement {
     menuOpen: { type: Boolean },
     importMenuOpen: { type: Boolean },
     exportMenuOpen: { type: Boolean },
-    projMenuOpen: { type: Boolean }
   };
 
   static styles = css`
@@ -23,7 +20,7 @@ export class AppHeader extends LitElement {
       justify-content: space-between;
       height: var(--header-height);
       width: 100%;
-      padding: 0 2rem;
+      padding: 0 3rem;
       box-sizing: border-box;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
@@ -35,6 +32,7 @@ export class AppHeader extends LitElement {
       display: flex;
       align-items: center;
       gap: 10px;
+      padding-left: 1rem;
     }
 
     .logo {
@@ -58,118 +56,14 @@ export class AppHeader extends LitElement {
       letter-spacing: -0.02em;
     }
 
-    /* Project Picker Container */
-    .project-control-container {
-      display: flex;
-      align-items: center;
-      margin-left: 1.5rem;
-      padding-left: 1.5rem;
-      border-left: 1px solid var(--border-color);
-      position: relative;
-    }
-
-    .project-trigger-btn {
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius-sm);
-      padding: 6px 32px 6px 12px;
-      font-size: 0.9rem;
-      font-family: var(--font-sans);
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: border-color var(--transition-normal), background-color var(--transition-normal);
-      position: relative;
-      user-select: none;
-    }
-
-    .project-trigger-btn:hover {
-      background-color: var(--bg-tertiary);
-      border-color: var(--accent-color);
-    }
-
-    .select-arrow {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      color: var(--text-secondary);
-      width: 14px;
-      height: 14px;
-      transition: transform var(--transition-normal);
-    }
-
-    .select-arrow.open {
-      transform: translateY(-50%) rotate(180deg);
-    }
-
-    /* Dropdown container */
-    .project-dropdown {
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 1.5rem; /* align with border-left padding offset */
-      background: var(--glass-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--border-radius-md);
-      box-shadow: var(--glass-shadow);
-      min-width: 200px;
-      z-index: 150;
-      display: flex;
-      flex-direction: column;
-      padding: 6px;
-      animation: slideDown 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .project-dropdown-item {
-      background: none;
-      border: none;
-      color: var(--text-primary);
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      font-family: var(--font-sans);
-      text-align: left;
-      border-radius: var(--border-radius-sm);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      transition: background-color var(--transition-normal), color var(--transition-normal);
-    }
-
-    .project-dropdown-item:hover {
-      background-color: var(--bg-tertiary);
-      color: var(--accent-color);
-    }
-
-    .project-dropdown-item.active {
-      font-weight: 600;
-      color: var(--accent-color);
-      background-color: rgba(20, 184, 166, 0.08);
-    }
-
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateY(-8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
+    /* Project Picker Container — moved to folder-tree */
 
     /* Actions buttons */
     .controls {
       display: flex;
       align-items: center;
       gap: 12px;
+      padding-right: 1rem;
     }
 
     .btn {
@@ -280,6 +174,7 @@ export class AppHeader extends LitElement {
       cursor: pointer;
       transition: background-color var(--transition-normal);
       width: 100%;
+      box-sizing: border-box;
     }
 
     .dropdown-item:hover {
@@ -298,6 +193,10 @@ export class AppHeader extends LitElement {
       align-items: center;
       justify-content: space-between;
       width: 100%;
+    }
+
+    .dropdown-submenu-trigger svg:last-child {
+      margin-left: auto;
     }
 
     .submenu {
@@ -336,8 +235,6 @@ export class AppHeader extends LitElement {
 
   constructor() {
     super();
-    this.projects = [];
-    this.currentKey = '';
     this.theme = 'light';
     this.lineNumbers = true;
     this.treeVisible = true;
@@ -347,7 +244,6 @@ export class AppHeader extends LitElement {
     this.menuOpen = false;
     this.importMenuOpen = false;
     this.exportMenuOpen = false;
-    this.projMenuOpen = false;
 
     // Subscriptions
     this.subs = [];
@@ -355,8 +251,6 @@ export class AppHeader extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.subs.push(projectManager.projects$.subscribe(p => this.projects = p));
-    this.subs.push(projectManager.currentProjectKey$.subscribe(key => this.currentKey = key));
     this.subs.push(projectManager.theme$.subscribe(t => this.theme = t));
     this.subs.push(projectManager.lineNumbers$.subscribe(ln => this.lineNumbers = ln));
 
@@ -367,9 +261,7 @@ export class AppHeader extends LitElement {
         this.importMenuOpen = false;
         this.exportMenuOpen = false;
       }
-      if (!e.composedPath().some(el => el.classList && el.classList.contains('project-control-container'))) {
-        this.projMenuOpen = false;
-      }
+      // project-control-container moved to folder-tree
     };
     window.addEventListener('click', this._clickOutsideHandler);
   }
@@ -480,38 +372,10 @@ export class AppHeader extends LitElement {
   }
 
   render() {
-    const currentProject = this.projects.find(p => p.key === this.currentKey);
-
     return html`
       <div class="brand">
         <div class="logo">O</div>
         <div class="title">OpenStudio</div>
-        
-        <div class="project-control-container">
-          <button 
-            class="project-trigger-btn"
-            @click=${(e) => { e.stopPropagation(); this.projMenuOpen = !this.projMenuOpen; }}
-          >
-            <span>${currentProject ? currentProject.name : 'Select Project'}</span>
-            <svg class="select-arrow ${this.projMenuOpen ? 'open' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
-          
-          ${this.projMenuOpen ? html`
-            <div class="project-dropdown">
-              ${this.projects.map(p => html`
-                <button 
-                  class="project-dropdown-item ${p.key === this.currentKey ? 'active' : ''}"
-                  @click=${() => this.selectProject(p.key)}
-                >
-                  <span>${p.name}</span>
-                  ${p.key === this.currentKey ? html`<span class="menu-indicator"></span>` : ''}
-                </button>
-              `)}
-            </div>
-          ` : ''}
-        </div>
       </div>
 
       <div class="controls">
