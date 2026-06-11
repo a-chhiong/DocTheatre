@@ -158,11 +158,20 @@ export class SwaggerPreviewer extends LitElement {
     // If the active file is a nested sub-path (e.g. paths/users.yaml), 
     // it's usually better to resolve the root openapi.yaml so the user sees the whole API!
     // But if the active file is a standalone yaml, we can resolve it directly.
-    const isRootCandidate = entrypoint.includes('openapi.yaml') || entrypoint.includes('swagger.yaml');
+    const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
+                            entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
+                            entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
+                            entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
     if (!isRootCandidate) {
-      const rootExists = this.files.find(f => f.path === 'openapi/openapi.yaml' || f.path === 'openapi.yaml');
-      if (rootExists) {
-        entrypoint = rootExists.path;
+      const rootFile = this.files.find(f => 
+        f.type === 'file' && 
+        (f.path === 'openapi.yaml' || f.path.endsWith('/openapi.yaml') ||
+         f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
+         f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
+         f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
+      );
+      if (rootFile) {
+        entrypoint = rootFile.path;
       }
     }
 

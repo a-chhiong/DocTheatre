@@ -3,78 +3,7 @@ import { debounceTime } from 'rxjs/operators';
 import { dbService } from './db.js';
 import JSZip from 'jszip';
 
-// Basic templates for new projects
-const DEFAULT_YAML = `openapi: 3.0.3
-info:
-  title: OpenStudio API
-  description: 
-    $ref: "../API - Description.md"
-  version: 1.0.0
-servers:
-  - url: https://api.example.com/v1
-paths:
-  /users:
-    $ref: "./paths/users.yaml"
-`;
-
-const USER_PATH_YAML = `get:
-  summary: Retrieve a list of users
-  description: Returns a list of users in the system.
-  responses:
-    '200':
-      description: A successful response
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              $ref: "../components/schemas/user.yaml"
-`;
-
-const USER_SCHEMA_YAML = `type: object
-properties:
-  id:
-    type: string
-    format: uuid
-    description: Unique user identifier
-  username:
-    type: string
-    description: User's registration name
-  email:
-    type: string
-    format: email
-`;
-
-const DEFAULT_MD = `# OpenStudio Project Documentation
-
-Welcome to your **OpenStudio** project. This Markdown file serves as supporting documentation.
-
-## Diagram Example (Mermaid)
-
-\`\`\`mermaid
-sequenceDiagram
-    participant User
-    participant Editor
-    participant Previewer
-    User->>Editor: Type YAML/Markdown
-    Editor->>Previewer: Update State
-    Previewer->>User: Display live docs & diagrams
-\`\`\`
-
-## Diagram Example (PlantUML)
-
-\`\`\`plantuml
-@startuml
-actor User
-boundary "OpenStudio" as Studio
-control "Project State" as State
-
-User -> Studio : Edit Files
-Studio -> State : Debounce Autosave
-State -> Studio : Update Live Preview
-@enduml
-\`\`\`
-`;
+import { DEFAULT_YAML, USER_PATH_YAML, USER_SCHEMA_YAML, DEFAULT_MD } from './project-default.js';
 
 export class ProjectManager {
   constructor() {
@@ -140,6 +69,7 @@ export class ProjectManager {
 
   async refreshProjectList() {
     const list = await dbService.getProjects();
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     this.projects$.next(list);
   }
 
@@ -165,27 +95,42 @@ export class ProjectManager {
   /**
    * Create new project key with template structure
    * @param {string} name
+   * @param {boolean} cleanStart
    */
-  async createNewProject(name) {
+  async createNewProject(name, cleanStart = false) {
     const key = 'project-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11));
+    const activeFile = cleanStart ? 'openapi.yaml' : 'openapi/openapi.yaml';
     const project = {
       key,
       name,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      activeFile: 'openapi/openapi.yaml',
-      openTabs: ['openapi/openapi.yaml']
+      activeFile,
+      openTabs: [activeFile]
     };
 
     await dbService.saveProject(project);
 
-    // Initialize default templates
-    const initialFiles = [
-      { projectKey: key, path: 'openapi/openapi.yaml', content: DEFAULT_YAML, type: 'file' },
-      { projectKey: key, path: 'openapi/paths/users.yaml', content: USER_PATH_YAML, type: 'file' },
-      { projectKey: key, path: 'openapi/components/schemas/user.yaml', content: USER_SCHEMA_YAML, type: 'file' },
-      { projectKey: key, path: 'API - Description.md', content: DEFAULT_MD, type: 'file' }
-    ];
+    // Initialize files based on cleanStart
+    let initialFiles = [];
+    if (cleanStart) {
+      const MINIMAL_YAML = `openapi: 3.0.3
+info:
+  title: ${name}
+  version: 1.0.0
+paths: {}
+`;
+      initialFiles = [
+        { projectKey: key, path: 'openapi.yaml', content: MINIMAL_YAML, type: 'file' }
+      ];
+    } else {
+      initialFiles = [
+        { projectKey: key, path: 'openapi/openapi.yaml', content: DEFAULT_YAML, type: 'file' },
+        { projectKey: key, path: 'openapi/paths/users.yaml', content: USER_PATH_YAML, type: 'file' },
+        { projectKey: key, path: 'openapi/components/schemas/user.yaml', content: USER_SCHEMA_YAML, type: 'file' },
+        { projectKey: key, path: 'API - Description.md', content: DEFAULT_MD, type: 'file' }
+      ];
+    }
 
     await dbService.saveFilesBulk(initialFiles);
 
@@ -242,9 +187,6 @@ export class ProjectManager {
     await dbService.saveProject(project);
   }
 
-  /**
-   * Delete project
-   */
   async deleteProject(key) {
     await dbService.deleteProject(key);
     await this.refreshProjectList();
@@ -255,7 +197,10 @@ export class ProjectManager {
       if (remaining.length > 0) {
         await this.switchProject(remaining[0].key);
       } else {
-        await this.createNewProject('Default Project');
+        const name = prompt('All projects have been deleted. You must create at least one project to continue.\n\nEnter project name:', 'My OpenStudio API');
+        const finalName = name ? name.trim() : 'Default Project';
+        const cleanStart = confirm('Would you like a clean start (blank project with a single openapi.yaml)?\n\nClick "OK" for a clean blank project.\nClick "Cancel" to initialize with the sample templates.');
+        await this.createNewProject(finalName, cleanStart);
       }
     }
   }
@@ -516,6 +461,11 @@ export class ProjectManager {
 
     // Parse ZIP file entries
     for (const [relativePath, fileEntry] of Object.entries(zip.files)) {
+      // Ignore macOS specific metadata folders and files
+      if (relativePath.split('/').includes('__MACOSX') || relativePath.endsWith('.DS_Store')) {
+        continue;
+      }
+
       if (fileEntry.dir) {
         filesToSave.push({
           projectKey,

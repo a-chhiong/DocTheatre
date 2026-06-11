@@ -140,11 +140,20 @@ export class AppRoot extends LitElement {
     if (!active) return;
     
     let entrypoint = active.path;
-    const isRootCandidate = entrypoint.includes('openapi.yaml') || entrypoint.includes('swagger.yaml');
+    const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
+                            entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
+                            entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
+                            entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
     if (!isRootCandidate) {
-      const rootExists = this.files.find(f => f.path === 'openapi/openapi.yaml' || f.path === 'openapi.yaml');
-      if (rootExists) {
-        entrypoint = rootExists.path;
+      const rootFile = this.files.find(f => 
+        f.type === 'file' && 
+        (f.path === 'openapi.yaml' || f.path.endsWith('/openapi.yaml') ||
+         f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
+         f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
+         f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
+      );
+      if (rootFile) {
+        entrypoint = rootFile.path;
       }
     }
 

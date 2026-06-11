@@ -4,23 +4,33 @@ import { projectManager } from '../../services/project-manager.js';
 export class TabBar extends LitElement {
   static properties = {
     tabs: { type: Array },
-    activeFile: { type: Object }
+    activeFile: { type: Object },
+    lineNumbers: { type: Boolean }
   };
 
   static styles = css`
     :host {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
       height: var(--tabbar-height);
       width: 100%;
       background-color: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .tabs-container {
+      display: flex;
+      height: 100%;
+      flex: 1;
       overflow-x: auto;
       overflow-y: hidden;
-      user-select: none;
     }
 
     /* Hide standard scrollbars for clean looks */
-    :host::-webkit-scrollbar {
+    .tabs-container::-webkit-scrollbar {
       display: none;
     }
 
@@ -83,12 +93,54 @@ export class TabBar extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    .tab-bar-actions {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding: 0 8px;
+      background-color: var(--bg-secondary);
+      border-left: 1px solid var(--border-color);
+      gap: 4px;
+    }
+
+    .tab-bar-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: var(--border-radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-normal);
+    }
+
+    .tab-bar-btn:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-tertiary);
+      border-color: var(--border-color);
+    }
+
+    .tab-bar-btn.active {
+      color: var(--accent-color);
+      background-color: var(--bg-primary);
+      border-color: var(--border-color);
+    }
+
+    .tab-bar-btn svg {
+      width: 16px;
+      height: 16px;
+    }
   `;
 
   constructor() {
     super();
     this.tabs = [];
     this.activeFile = null;
+    this.lineNumbers = true;
     this.subs = [];
     this.draggedIndex = null;
   }
@@ -97,6 +149,7 @@ export class TabBar extends LitElement {
     super.connectedCallback();
     this.subs.push(projectManager.openTabs$.subscribe(t => this.tabs = t));
     this.subs.push(projectManager.activeFile$.subscribe(af => this.activeFile = af));
+    this.subs.push(projectManager.lineNumbers$.subscribe(ln => this.lineNumbers = ln));
   }
 
   disconnectedCallback() {
@@ -111,6 +164,10 @@ export class TabBar extends LitElement {
   handleTabClose(e, path) {
     e.stopPropagation();
     projectManager.closeTab(path);
+  }
+
+  handleLineNumbersToggle() {
+    projectManager.setLineNumbers(!this.lineNumbers);
   }
 
   /* HTML5 Drag & Drop handlers */
@@ -160,35 +217,43 @@ export class TabBar extends LitElement {
   }
 
   render() {
-    if (this.tabs.length === 0) {
-      return html`
-        <div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">
-          No open files
-        </div>
-      `;
-    }
-
     return html`
-      ${this.tabs.map((tabPath, index) => {
-        const isActive = this.activeFile && this.activeFile.path === tabPath;
-        const filename = tabPath.split('/').pop();
-
-        return html`
-          <div 
-            class="tab ${isActive ? 'active' : ''}"
-            draggable="true"
-            @dragstart=${(e) => this.handleDragStart(e, index)}
-            @dragend=${this.handleDragEnd}
-            @dragover=${(e) => this.handleDragOver(e, index)}
-            @dragleave=${this.handleDragLeave}
-            @drop=${(e) => this.handleDrop(e, index)}
-            @click=${() => this.handleTabClick(tabPath)}
-          >
-            <span class="tab-name" title=${tabPath}>${filename}</span>
-            <span class="tab-close" @click=${(e) => this.handleTabClose(e, tabPath)}>×</span>
+      <div class="tabs-container">
+        ${this.tabs.length === 0 ? html`
+          <div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">
+            No open files
           </div>
-        `;
-      })}
+        ` : this.tabs.map((tabPath, index) => {
+          const isActive = this.activeFile && this.activeFile.path === tabPath;
+          const filename = tabPath.split('/').pop();
+
+          return html`
+            <div 
+              class="tab ${isActive ? 'active' : ''}"
+              draggable="true"
+              @dragstart=${(e) => this.handleDragStart(e, index)}
+              @dragend=${this.handleDragEnd}
+              @dragover=${(e) => this.handleDragOver(e, index)}
+              @dragleave=${this.handleDragLeave}
+              @drop=${(e) => this.handleDrop(e, index)}
+              @click=${() => this.handleTabClick(tabPath)}
+            >
+              <span class="tab-name" title=${tabPath}>${filename}</span>
+              <span class="tab-close" @click=${(e) => this.handleTabClose(e, tabPath)}>×</span>
+            </div>
+          `;
+        })}
+      </div>
+
+      <div class="tab-bar-actions">
+        <button 
+          title="Toggle Line Numbers"
+          class="tab-bar-btn ${this.lineNumbers ? 'active' : ''}" 
+          @click=${this.handleLineNumbersToggle}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+      </div>
     `;
   }
 }

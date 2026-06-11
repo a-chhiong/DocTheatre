@@ -20,7 +20,9 @@ function loadPlantUMLFiles() {
     } else {
       // Load viz-global.js
       const script = document.createElement('script');
-      script.src = '/vendor/plantuml/viz-global.js';
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+      script.src = `${cleanBase}vendor/plantuml/viz-global.js`;
       script.async = true;
       script.onload = () => {
         loadPlantUMLCore(resolve, reject);
@@ -43,7 +45,9 @@ function loadPlantUMLCore(resolve, reject) {
   // Bypass Vite's static import analyzer by constructing import dynamically
   const dynamicImport = new Function('m', 'return import(m)');
   
-  dynamicImport('/vendor/plantuml/plantuml.js')
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  dynamicImport(`${cleanBase}vendor/plantuml/plantuml.js`)
     .then((module) => {
       pumlRenderFn = module.render;
       resolve(pumlRenderFn);

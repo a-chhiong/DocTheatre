@@ -154,7 +154,26 @@ export const resolverService = {
    */
   resolve(files, entrypoint = 'openapi/openapi.yaml') {
     const errors = [];
-    const rootFile = files.find(f => f.path === entrypoint && f.type === 'file');
+    let rootFile = files.find(f => f.path === entrypoint && f.type === 'file');
+
+    if (!rootFile) {
+      // If exact path not found, try to locate a file in files that ends with the requested entrypoint's filename
+      const filename = entrypoint.split('/').pop();
+      rootFile = files.find(f => f.type === 'file' && (f.path === filename || f.path.endsWith('/' + filename)));
+
+      if (!rootFile) {
+        // Fallback: look for other common entrypoint names anywhere in the virtual file system
+        const fallbacks = ['openapi.yaml', 'swagger.yaml', 'openapi.json', 'swagger.json'];
+        for (const fb of fallbacks) {
+          rootFile = files.find(f => f.type === 'file' && (f.path === fb || f.path.endsWith('/' + fb)));
+          if (rootFile) break;
+        }
+      }
+
+      if (rootFile) {
+        entrypoint = rootFile.path;
+      }
+    }
 
     if (!rootFile) {
       errors.push(`Root entrypoint file "${entrypoint}" not found in project workspace.`);

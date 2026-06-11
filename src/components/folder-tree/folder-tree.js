@@ -178,11 +178,15 @@ export class FolderTree extends LitElement {
       transition: background-color var(--transition-normal), color var(--transition-normal);
       position: relative;
       user-select: none;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       max-width: 140px;
       border-radius: var(--border-radius-sm);
+    }
+
+    .project-trigger-btn span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 110px;
     }
 
     .project-trigger-btn:hover {
@@ -290,7 +294,12 @@ export class FolderTree extends LitElement {
     this.subs.push(projectManager.files$.subscribe(f => this.files = f));
     this.subs.push(projectManager.activeFile$.subscribe(af => this.activeFile = af));
     this.subs.push(projectManager.projects$.subscribe(p => this.projects = p));
-    this.subs.push(projectManager.currentProjectKey$.subscribe(key => this.currentKey = key));
+    this.subs.push(projectManager.currentProjectKey$.subscribe(key => {
+      if (this.currentKey && this.currentKey !== key) {
+        this.collapsedPaths = new Set();
+      }
+      this.currentKey = key;
+    }));
 
     // Close dropdown when clicking outside
     this._clickOutsideHandler = (e) => {

@@ -88,6 +88,97 @@ export class WorkspaceLayout extends LitElement {
     .hidden {
       display: none !important;
     }
+
+    /* Workspace placeholder style */
+    .workspace-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--bg-primary);
+      color: var(--text-secondary);
+      z-index: 20;
+      padding: 2rem;
+      text-align: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .placeholder-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1.5rem;
+      color: var(--accent-color);
+      opacity: 0.8;
+      background: var(--bg-tertiary);
+      border-radius: var(--border-radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .placeholder-icon svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .workspace-placeholder h3 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .workspace-placeholder p {
+      font-size: 0.95rem;
+      max-width: 400px;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    .placeholder-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .placeholder-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+    }
+
+    .placeholder-btn:hover {
+      background-color: var(--bg-tertiary);
+      border-color: var(--accent-color);
+      transform: translateY(-1px);
+    }
+
+    .placeholder-btn svg {
+      width: 16px;
+      height: 16px;
+    }
   `;
 
   constructor() {
@@ -127,15 +218,12 @@ export class WorkspaceLayout extends LitElement {
     let split2Spec = '0px';
     let previewSpec = '0px';
 
-    const visibleCount = [this.treeVisible, this.editorVisible, this.previewVisible].filter(Boolean).length;
-
-    if (visibleCount === 0) {
-      // fallback if user closes everything, show editor
-      this.editorVisible = true;
-    }
-
     if (this.treeVisible) {
-      treeSpec = `${this.treeWidth}px`;
+      if (!this.editorVisible && !this.previewVisible) {
+        treeSpec = '1fr';
+      } else {
+        treeSpec = `${this.treeWidth}px`;
+      }
     }
 
     if (this.treeVisible && (this.editorVisible || this.previewVisible)) {
@@ -150,7 +238,7 @@ export class WorkspaceLayout extends LitElement {
       }
     }
 
-    if (this.previewVisible && (this.editorVisible || this.treeVisible)) {
+    if (this.editorVisible && this.previewVisible) {
       split2Spec = '4px';
     }
 
@@ -253,7 +341,47 @@ export class WorkspaceLayout extends LitElement {
     }));
   }
 
+  togglePanel(panel) {
+    this.dispatchEvent(new CustomEvent('toggle-panel', {
+      detail: { panel },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
   render() {
+    const allHidden = !this.treeVisible && !this.editorVisible && !this.previewVisible;
+
+    if (allHidden) {
+      return html`
+        <div class="workspace-placeholder">
+          <div class="placeholder-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+              <line x1="15" y1="3" x2="15" y2="21"></line>
+            </svg>
+          </div>
+          <h3>All Panels Hidden</h3>
+          <p>Bring them back using the buttons below or the header controls.</p>
+          <div class="placeholder-actions">
+            <button class="placeholder-btn" @click=${() => this.togglePanel('tree')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              Show Files
+            </button>
+            <button class="placeholder-btn" @click=${() => this.togglePanel('editor')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+              Show Editor
+            </button>
+            <button class="placeholder-btn" @click=${() => this.togglePanel('preview')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Show Preview
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
     return html`
       <!-- Column 1: Folder Tree -->
       <div class="column folder-tree-col ${this.treeVisible ? '' : 'hidden'}">

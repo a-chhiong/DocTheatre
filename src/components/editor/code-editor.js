@@ -356,9 +356,7 @@ export class CodeEditor extends LitElement {
       dropCursor(),
       EditorState.allowMultipleSelections.of(true),
       highlightActiveLine(),
-      highlightActiveLineGutter(),
       bracketMatching(),
-      foldGutter(),
       autocompletion(),
 
       // Custom workspace themes mapping to CSS tokens
@@ -377,7 +375,7 @@ export class CodeEditor extends LitElement {
       this.themeCompartment.of(EditorView.theme({}, { dark: this.theme === 'dark' })),
 
       // Line numbers toggle compartment
-      this.lineNumbersCompartment.of(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
+      this.lineNumbersCompartment.of(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []),
 
       // Language mode detection
       this.langCompartment.of(
@@ -433,7 +431,7 @@ export class CodeEditor extends LitElement {
   updateEditorLineNumbers() {
     if (!this.editorView) return;
     this.editorView.dispatch({
-      effects: this.lineNumbersCompartment.reconfigure(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : [])
+      effects: this.lineNumbersCompartment.reconfigure(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : [])
     });
   }
 
