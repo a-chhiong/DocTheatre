@@ -43,7 +43,7 @@
   /* Editor Syntax Highlighting - Light Mode */
   --syntax-keyword: hsl(340, 75%, 45%);     /* Deep Rose */
   --syntax-operator: hsl(220, 10%, 40%);
-  --syntax-meta: hsl(185, 80%, 35%);        /* Teal */
+  --syntax-meta: hsl(215, 20%, 45%);        /* Muted Slate Grey */
   --syntax-string: hsl(120, 60%, 25%);      /* Forest Green */
   --syntax-number: hsl(25, 85%, 45%);       /* Warm Orange */
   --syntax-bool: hsl(25, 85%, 45%);
@@ -52,8 +52,8 @@
   --syntax-variable: hsl(220, 25%, 15%);
   --syntax-type: hsl(260, 60%, 45%);        /* Purple */
   --syntax-tag: hsl(340, 75%, 45%);
-  --syntax-heading: hsl(185, 85%, 35%);     /* Rich Teal Heading */
-  --syntax-list: hsl(185, 85%, 35%);
+  --syntax-heading: hsl(220, 75%, 40%);     /* Deep Blue Heading */
+  --syntax-list: hsl(215, 20%, 45%);
   --syntax-url: hsl(200, 80%, 40%);
   --syntax-link: hsl(200, 80%, 40%);
   --syntax-property: hsl(220, 80%, 35%);    /* Blue */
@@ -83,7 +83,7 @@ html[data-theme="dark"] {
   /* Editor Syntax Highlighting - Dark Mode */
   --syntax-keyword: hsl(340, 90%, 65%);     /* Bright Rose */
   --syntax-operator: hsl(220, 10%, 75%);
-  --syntax-meta: hsl(185, 80%, 60%);        /* Teal */
+  --syntax-meta: hsl(215, 20%, 65%);        /* Muted Slate Grey */
   --syntax-string: hsl(100, 60%, 65%);      /* Sage Green */
   --syntax-number: hsl(35, 90%, 65%);       /* Bright Orange */
   --syntax-bool: hsl(35, 90%, 65%);
@@ -92,8 +92,8 @@ html[data-theme="dark"] {
   --syntax-variable: hsl(220, 10%, 90%);
   --syntax-type: hsl(260, 80%, 75%);        /* Lavender */
   --syntax-tag: hsl(340, 90%, 65%);
-  --syntax-heading: hsl(185, 80%, 60%);     /* Glowing Teal */
-  --syntax-list: hsl(185, 80%, 60%);
+  --syntax-heading: hsl(210, 85%, 65%);     /* Steel Blue Heading */
+  --syntax-list: hsl(215, 20%, 65%);
   --syntax-url: hsl(200, 90%, 65%);
   --syntax-link: hsl(200, 90%, 65%);
   --syntax-property: hsl(210, 85%, 70%);    /* Soft Blue */

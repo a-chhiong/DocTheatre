@@ -178,7 +178,7 @@ html[data-theme="dark"] .swagger-ui code {
   background-color: var(--bg-tertiary);
   padding: 0.2rem 0.4rem;
   border-radius: var(--border-radius-sm);
-  color: var(--accent-color);
+  color: var(--syntax-keyword);
 }
 
 .markdown-preview pre code {

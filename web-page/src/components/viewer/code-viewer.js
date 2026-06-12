@@ -107,29 +107,56 @@ export class CodeViewer extends LitElement {
     return baseSegments.join('/');
   }
 
-  preprocessImports(content, basePath) {
+  preprocessImports(content, basePath, visited = new Set()) {
     if (!content) return '';
-    return content.replace(/^@import\s+['"]?([^'"]+)['"]?\s*$/gm, (match, relPath) => {
+    if (visited.has(basePath)) {
+      return `*Error: Circular import detected for "${basePath}"*`;
+    }
+    const nextVisited = new Set(visited);
+    nextVisited.add(basePath);
+
+    // First, process @import statements
+    let processed = content.replace(/^@import\s+['"]?([^'"]+)['"]?\s*$/gm, (match, relPath) => {
       const resolvedPath = this.resolvePath(basePath, relPath);
-      const importedFile = this.files.find(f => f.path === resolvedPath && f.type === 'file');
-      if (importedFile) {
-        const ext = relPath.split('.').pop().toLowerCase();
-        let lang = '';
-        if (ext === 'puml' || ext === 'plantuml' || ext === 'pu') {
-          lang = 'plantuml';
-        } else if (ext === 'mermaid' || ext === 'mmd') {
-          lang = 'mermaid';
-        } else if (ext === 'yaml' || ext === 'yml') {
-          lang = 'yaml';
-        } else if (ext === 'md' || ext === 'markdown') {
-          return this.preprocessImports(importedFile.content, resolvedPath);
-        } else {
-          lang = ext;
-        }
-        return `\`\`\`${lang}\n${importedFile.content}\n\`\`\``;
-      }
-      return `*Error: Imported file not found at "${resolvedPath}"*`;
+      return this.getImportedContent(resolvedPath, relPath, nextVisited);
     });
+
+    // Next, process Obsidian-style transclusions ![[path]]
+    processed = processed.replace(/!\[\[(.*?)\]\]/g, (match, relPath) => {
+      const resolvedPath = this.resolvePath(basePath, relPath);
+      return this.getImportedContent(resolvedPath, relPath, nextVisited);
+    });
+
+    return processed;
+  }
+
+  getImportedContent(resolvedPath, originalPath, visited) {
+    let importedFile = this.files.find(f => f.path === resolvedPath && f.type === 'file');
+    
+    if (!importedFile) {
+      const filename = originalPath.split('/').pop();
+      importedFile = this.files.find(f => f.type === 'file' && (f.path === filename || f.path.endsWith('/' + filename)));
+    }
+
+    if (importedFile) {
+      const ext = importedFile.path.split('.').pop().toLowerCase();
+      if (ext === 'md' || ext === 'markdown') {
+        return this.preprocessImports(importedFile.content, importedFile.path, visited);
+      }
+      
+      let lang = '';
+      if (ext === 'puml' || ext === 'plantuml' || ext === 'pu') {
+        lang = 'plantuml';
+      } else if (ext === 'mermaid' || ext === 'mmd') {
+        lang = 'mermaid';
+      } else if (ext === 'yaml' || ext === 'yml') {
+        lang = 'yaml';
+      } else {
+        lang = ext;
+      }
+      return `\`\`\`${lang}\n${importedFile.content}\n\`\`\``;
+    }
+    return `*Error: Imported file not found at "${resolvedPath}"*`;
   }
 
   escapeHTML(str) {
@@ -142,17 +169,26 @@ export class CodeViewer extends LitElement {
       .replace(/'/g, '&#039;');
   }
 
+  showPlaceholder(container, message = "No preview available for this file.") {
+    container.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary); font-style: italic; padding: 2rem; text-align: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5; color: var(--text-secondary);">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        <span>${message}</span>
+      </div>
+    `;
+    this.currentContentType = '';
+  }
+
   updatePreview() {
     const container = document.getElementById('previewer-target');
     if (!container) return;
 
     if (!this.activeFile) {
-      container.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary); font-style: italic; padding: 2rem;">
-          No active preview. Select a spec or document.
-        </div>
-      `;
-      this.currentContentType = '';
+      this.showPlaceholder(container, "No active preview. Select a spec or document.");
       return;
     }
 
@@ -160,6 +196,7 @@ export class CodeViewer extends LitElement {
     const isMarkdown = path.endsWith('.md') || path.endsWith('.markdown');
     const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu');
     const isMermaid = path.endsWith('.mermaid') || path.endsWith('.mmd');
+    const isYamlOrJson = path.endsWith('.yaml') || path.endsWith('.yml') || path.endsWith('.json');
 
     // Update content type for floating button
     if (isMarkdown) {
@@ -171,9 +208,11 @@ export class CodeViewer extends LitElement {
     } else if (isMermaid) {
       this.currentContentType = 'mermaid';
       this.renderMermaidPreview(container);
-    } else {
+    } else if (isYamlOrJson) {
       this.currentContentType = 'swagger';
       this.renderSwaggerPreview(container);
+    } else {
+      this.showPlaceholder(container, `No preview available for "${this.activeFile.path.split('/').pop()}".`);
     }
 
     // Force re-render to update floating-action contentType
@@ -258,17 +297,15 @@ export class CodeViewer extends LitElement {
    * 2. Resolve references and render Swagger UI preview
    */
   renderSwaggerPreview(container) {
-    // Identify entrypoint for resolution
     let entrypoint = this.activeFile.path;
     
-    // If the active file is a nested sub-path (e.g. paths/users.yaml), 
-    // it's usually better to resolve the root openapi.yaml so the user sees the whole API!
-    // But if the active file is a standalone yaml, we can resolve it directly.
     const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
                             entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
                             entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
                             entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
     
+    let resolvedResult = null;
+
     if (!isRootCandidate) {
       const rootFile = this.files.find(f => 
         f.type === 'file' && 
@@ -277,25 +314,41 @@ export class CodeViewer extends LitElement {
          f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
          f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
       );
-      if (rootFile) entrypoint = rootFile.path;
+      if (rootFile) {
+        const rootResult = resolverService.resolve(this.files, rootFile.path);
+        // Check if our active file is referenced in the root spec resolution
+        if (rootResult && rootResult.spec && rootResult.resolvedFiles && rootResult.resolvedFiles.has(this.activeFile.path)) {
+          resolvedResult = rootResult;
+          entrypoint = rootFile.path;
+        }
+      }
     }
 
-    const { spec, specIndex } = resolverService.resolve(this.files, entrypoint);
-    if (!spec) {
-      container.innerHTML = `
-        <div style="padding: 2rem; color: var(--color-error); font-family: monospace;">
-          Could not resolve OpenAPI/Swagger specification. Please check your file references.
-        </div>
-      `;
+    if (!resolvedResult) {
+      // Resolve the active file directly
+      resolvedResult = resolverService.resolve(this.files, entrypoint);
+    }
+
+    const { spec } = resolvedResult || {};
+    
+    // Check if the resolved spec is a valid OpenAPI/Swagger specification
+    const isValidSpec = spec && typeof spec === 'object' && (spec.openapi || spec.swagger || spec.paths);
+
+    if (!isValidSpec) {
+      this.showPlaceholder(container, `No preview available for "${this.activeFile.path.split('/').pop()}".`);
       return;
     }
 
-    container.innerHTML = '<div id="swagger-ui"></div>';
-    this.swaggerInstance = SwaggerUI({
-      spec,
-      dom_id: '#swagger-ui',
-      deepLinking: true
-    });
+    try {
+      container.innerHTML = '<div id="swagger-ui"></div>';
+      this.swaggerInstance = SwaggerUI({
+        spec,
+        dom_id: '#swagger-ui',
+        deepLinking: true
+      });
+    } catch (err) {
+      this.showPlaceholder(container, `Failed to render Swagger UI: ${err.message}`);
+    }
   }
 
   /**
@@ -512,7 +565,7 @@ export class CodeViewer extends LitElement {
       background-color: #f1f5f9;
       padding: 0.2rem 0.4rem;
       border-radius: 4px;
-      color: #0f766e;
+      color: #d73a49;
     }
     pre code {
       background-color: transparent;

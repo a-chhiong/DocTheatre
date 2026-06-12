@@ -419,6 +419,42 @@ paths: {}
   }
 
   /**
+   * Close all tabs
+   */
+  closeAllTabs() {
+    this.openTabs$.next([]);
+    this.activeFile$.next(null);
+
+    // Save project state
+    this.autosaveSubject$.next({
+      projectKey: this.currentProjectKey$.value,
+      path: '',
+      content: '',
+      type: 'dummy'
+    });
+  }
+
+  /**
+   * Close all tabs except the specified one
+   * @param {string} keepPath
+   */
+  closeOtherTabs(keepPath) {
+    const tabs = this.openTabs$.value;
+    if (!tabs.includes(keepPath)) return;
+
+    this.openTabs$.next([keepPath]);
+    this.setActiveFile(keepPath);
+
+    // Save project state
+    this.autosaveSubject$.next({
+      projectKey: this.currentProjectKey$.value,
+      path: '',
+      content: '',
+      type: 'dummy'
+    });
+  }
+
+  /**
    * Reorder tabs array (after drag and drop)
    */
   reorderTabs(tabs) {
@@ -489,8 +525,16 @@ paths: {}
 
     // Parse ZIP file entries
     for (const [relativePath, fileEntry] of Object.entries(zip.files)) {
-      // Ignore macOS specific metadata folders and files
-      if (relativePath.split('/').includes('__MACOSX') || relativePath.endsWith('.DS_Store')) {
+      const pathSegments = relativePath.split('/');
+      const filename = pathSegments.pop() || '';
+
+      // Ignore macOS specific metadata folders and files (__MACOSX, .DS_Store, and dot-underscore shadow files)
+      if (
+        pathSegments.includes('__MACOSX') ||
+        filename === '.DS_Store' ||
+        filename.startsWith('._') ||
+        relativePath.endsWith('.DS_Store')
+      ) {
         continue;
       }
 
@@ -562,6 +606,19 @@ paths: {}
       const cleanPath = pathSegments.join('/');
 
       if (!cleanPath) continue; // skip root folder self entry if any
+
+      const cleanSegments = cleanPath.split('/');
+      const filename = cleanSegments.pop() || '';
+
+      // Ignore macOS specific metadata folders and files (__MACOSX, .DS_Store, and dot-underscore shadow files)
+      if (
+        cleanSegments.includes('__MACOSX') ||
+        filename === '.DS_Store' ||
+        filename.startsWith('._') ||
+        cleanPath.endsWith('.DS_Store')
+      ) {
+        continue;
+      }
 
       const content = await new Promise((resolve) => {
         const reader = new FileReader();

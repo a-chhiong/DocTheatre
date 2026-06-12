@@ -2,12 +2,12 @@ import { LitElement, html, css } from 'lit';
 import { projectManager } from '../../services/project-manager.js';
 
 // CodeMirror imports
-import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, lineNumbers, highlightActiveLineGutter } from "@codemirror/view";
+import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, lineNumbers, highlightActiveLineGutter, rectangularSelection, crosshairCursor } from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab, addCursorAbove, addCursorBelow } from "@codemirror/commands";
 import { yaml } from "@codemirror/lang-yaml";
-import { markdown } from "@codemirror/lang-markdown";
-import { syntaxHighlighting, bracketMatching, foldGutter } from "@codemirror/language";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { syntaxHighlighting, bracketMatching, foldGutter, indentUnit } from "@codemirror/language";
 import { autocompletion } from "@codemirror/autocomplete";
 
 // OpenStudio highlight infrastructure (language modes, theme, styles, decorators)
@@ -196,9 +196,12 @@ export class CodeEditor extends LitElement {
       drawSelection(),
       dropCursor(),
       EditorState.allowMultipleSelections.of(true),
+      rectangularSelection(),
+      crosshairCursor(),
       highlightActiveLine(),
       bracketMatching(),
       autocompletion(),
+      indentUnit.of("    "),
 
       // Custom workspace themes mapping to CSS tokens
       specStudioEditorTheme,
@@ -209,7 +212,14 @@ export class CodeEditor extends LitElement {
       
       keymap.of([
         ...defaultKeymap,
-        ...historyKeymap
+        ...historyKeymap,
+        { key: "Alt-Cmd-ArrowUp", run: addCursorAbove },
+        { key: "Alt-Cmd-ArrowDown", run: addCursorBelow },
+        { key: "Ctrl-Alt-ArrowUp", run: addCursorAbove },
+        { key: "Ctrl-Alt-ArrowDown", run: addCursorBelow },
+        { key: "Shift-Alt-ArrowUp", run: addCursorAbove },
+        { key: "Shift-Alt-ArrowDown", run: addCursorBelow },
+        indentWithTab
       ]),
 
       // Theme toggle compartment
@@ -224,7 +234,10 @@ export class CodeEditor extends LitElement {
       // Language mode detection
       this.langCompartment.of(
         isYaml ? yaml() :
-        (isMd ? markdown({ codeLanguages }) :
+        (isMd ? markdown({ 
+          base: markdownLanguage,
+          codeLanguages 
+        }) :
         (isPuml ? plantumlSupport :
         (isMermaid ? mermaidSupport : [])))
       ),

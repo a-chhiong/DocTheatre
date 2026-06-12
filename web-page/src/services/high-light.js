@@ -3,6 +3,7 @@
 // They come from CodeMirror 6 (@codemirror) and its Lezer tagging system (@lezer).
 
 import { StreamLanguage, LanguageSupport, LanguageDescription, HighlightStyle } from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
 import { EditorView, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view";
 
@@ -242,30 +243,15 @@ export { mermaidSupport };
 const codeLanguages = [
   LanguageDescription.of({
     name: "plantuml",
-    alias: ["puml"],
+    alias: ["puml", "plantuml", "pu"],
     load: async () => plantumlSupport
   }),
   LanguageDescription.of({
     name: "mermaid",
-    alias: ["mmd"],
+    alias: ["mmd", "mermaid"],
     load: async () => mermaidSupport
   }),
-  LanguageDescription.of({
-    name: "yaml",
-    alias: ["yml"],
-    load: async () => {
-      const { yaml } = await import("@codemirror/lang-yaml");
-      return yaml();
-    }
-  }),
-  LanguageDescription.of({
-    name: "markdown",
-    alias: ["md"],
-    load: async () => {
-      const { markdown } = await import("@codemirror/lang-markdown");
-      return markdown();
-    }
-  })
+  ...languages
 ];
 export { codeLanguages };
 
@@ -343,6 +329,12 @@ export { specStudioEditorTheme };
  *     // etc.
  */
 const specStudioHighlightStyle = HighlightStyle.define([
+  { tag: t.content, color: "var(--text-primary)" }, 
+  { tag: t.heading, color: "var(--text-primary)", fontWeight: "bold" },
+  { tag: t.heading1, color: "var(--text-primary)", fontWeight: "bold", fontSize: "1.4em" },
+  { tag: t.heading2, color: "var(--text-primary)", fontWeight: "bold", fontSize: "1.25em" },
+  { tag: t.heading3, color: "var(--text-primary)", fontWeight: "bold", fontSize: "1.15em" },
+  { tag: t.list, color: "var(--text-primary)" },
   { tag: t.keyword, color: "var(--syntax-keyword)" },
   { tag: t.operator, color: "var(--syntax-operator)" },
   { tag: t.meta, color: "var(--syntax-meta)" },
@@ -358,7 +350,6 @@ const specStudioHighlightStyle = HighlightStyle.define([
   { tag: t.heading1, color: "var(--syntax-heading)", fontWeight: "bold", fontSize: "1.3em" },
   { tag: t.heading2, color: "var(--syntax-heading)", fontWeight: "bold", fontSize: "1.2em" },
   { tag: t.heading3, color: "var(--syntax-heading)", fontWeight: "bold", fontSize: "1.1em" },
-  { tag: t.list, color: "var(--syntax-list)" },
   { tag: t.strong, fontWeight: "bold" },
   { tag: t.emphasis, fontStyle: "italic" },
   { tag: t.url, color: "var(--syntax-url)", textDecoration: "underline" },

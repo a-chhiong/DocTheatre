@@ -5,7 +5,8 @@ export class TabBar extends LitElement {
   static properties = {
     tabs: { type: Array },
     activeFile: { type: Object },
-    lineNumbers: { type: Boolean }
+    lineNumbers: { type: Boolean },
+    contextMenu: { type: Object }
   };
 
   static styles = css`
@@ -133,6 +134,30 @@ export class TabBar extends LitElement {
       width: 16px;
       height: 16px;
     }
+
+    /* Context Menu Styles */
+    .context-menu {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      box-shadow: var(--glass-shadow);
+      padding: 4px 0;
+      min-width: 150px;
+    }
+
+    .context-menu-item {
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: background-color var(--transition-normal);
+    }
+
+    .context-menu-item:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--accent-color);
+    }
   `;
 
   constructor() {
@@ -142,6 +167,7 @@ export class TabBar extends LitElement {
     this.lineNumbers = true;
     this.subs = [];
     this.draggedIndex = null;
+    this.contextMenu = null;
   }
 
   connectedCallback() {
@@ -158,6 +184,9 @@ export class TabBar extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.subs.forEach(s => s.unsubscribe());
+    if (this._closeMenuHandler) {
+      window.removeEventListener('click', this._closeMenuHandler);
+    }
   }
 
   handleTabClick(path) {
@@ -252,6 +281,7 @@ export class TabBar extends LitElement {
               @dragleave=${this.handleDragLeave}
               @drop=${(e) => this.handleDrop(e, index)}
               @click=${() => this.handleTabClick(tabPath)}
+              @contextmenu=${(e) => this.handleContextMenu(e, tabPath)}
             >
               <span class="tab-name" title=${tabPath}>${filename}</span>
               <span class="tab-close" @click=${(e) => this.handleTabClose(e, tabPath)}>×</span>
@@ -269,7 +299,47 @@ export class TabBar extends LitElement {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
         </button>
       </div>
+
+      ${this.contextMenu ? html`
+        <div 
+          class="context-menu" 
+          style="position: fixed; left: ${this.contextMenu.x}px; top: ${this.contextMenu.y}px; z-index: 1000;"
+        >
+          <div class="context-menu-item" @click=${() => this.handleMenuClose(this.contextMenu.path)}>Close</div>
+          <div class="context-menu-item" @click=${() => this.handleMenuCloseOthers(this.contextMenu.path)}>Close Others</div>
+          <div class="context-menu-item" @click=${() => this.handleMenuCloseAll()}>Close All</div>
+        </div>
+      ` : ''}
     `;
+  }
+
+  handleContextMenu(e, path) {
+    e.preventDefault();
+    this.contextMenu = {
+      x: e.clientX,
+      y: e.clientY,
+      path
+    };
+
+    this._closeMenuHandler = () => {
+      this.contextMenu = null;
+      window.removeEventListener('click', this._closeMenuHandler);
+    };
+    setTimeout(() => {
+      window.addEventListener('click', this._closeMenuHandler);
+    }, 0);
+  }
+
+  handleMenuClose(path) {
+    projectManager.closeTab(path);
+  }
+
+  handleMenuCloseOthers(path) {
+    projectManager.closeOtherTabs(path);
+  }
+
+  handleMenuCloseAll() {
+    projectManager.closeAllTabs();
   }
 }
 

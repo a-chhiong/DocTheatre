@@ -67,11 +67,11 @@ function getObjectByPointer(obj, pointer) {
  * @param {Array<string>} errors Accumulator of error strings
  * @returns {Object} Fully resolved node
  */
-function resolveNode(node, currentFile, files, visited, errors) {
+function resolveNode(node, currentFile, files, visited, errors, resolvedFiles) {
   if (node == null) return node;
 
   if (Array.isArray(node)) {
-    return node.map(item => resolveNode(item, currentFile, files, visited, errors));
+    return node.map(item => resolveNode(item, currentFile, files, visited, errors, resolvedFiles));
   }
 
   if (typeof node === 'object') {
@@ -87,6 +87,10 @@ function resolveNode(node, currentFile, files, visited, errors) {
       // Split into file path and internal pointer (if any)
       const [refPath, pointer] = refStr.split('#');
       const resolvedFilePath = resolvePath(getDir(currentFile), refPath);
+
+      if (resolvedFiles) {
+        resolvedFiles.add(resolvedFilePath);
+      }
 
       // Check for circular reference loops
       if (visited.has(resolvedFilePath)) {
@@ -127,7 +131,7 @@ function resolveNode(node, currentFile, files, visited, errors) {
         newVisited.add(resolvedFilePath);
 
         // Recursively resolve references in the nested document node
-        return resolveNode(targetNode, resolvedFilePath, files, newVisited, errors);
+        return resolveNode(targetNode, resolvedFilePath, files, newVisited, errors, resolvedFiles);
       } catch (err) {
         errors.push(`Error parsing referenced file "${resolvedFilePath}": ${err.message}`);
         return { $ref: `#/errors/ParseError_${resolvedFilePath.replace(/[^a-zA-Z0-9]/g, '_')}` };
@@ -137,7 +141,7 @@ function resolveNode(node, currentFile, files, visited, errors) {
     // Recursively resolve object properties
     const resolvedObj = {};
     for (const [key, val] of Object.entries(node)) {
-      resolvedObj[key] = resolveNode(val, currentFile, files, visited, errors);
+      resolvedObj[key] = resolveNode(val, currentFile, files, visited, errors, resolvedFiles);
     }
     return resolvedObj;
   }
@@ -150,10 +154,11 @@ export const resolverService = {
    * Bundle a multi-file OpenAPI definition starting from the root entrypoint
    * @param {Array<Object>} files List of virtual files
    * @param {string} entrypoint e.g. "openapi/openapi.yaml"
-   * @returns {Object} { spec: Object, errors: Array<string> }
+   * @returns {Object} { spec: Object, errors: Array<string>, resolvedFiles: Set<string> }
    */
   resolve(files, entrypoint = 'openapi/openapi.yaml') {
     const errors = [];
+    const resolvedFiles = new Set();
     let rootFile = files.find(f => f.path === entrypoint && f.type === 'file');
 
     if (!rootFile) {
@@ -177,23 +182,25 @@ export const resolverService = {
 
     if (!rootFile) {
       errors.push(`Root entrypoint file "${entrypoint}" not found in project workspace.`);
-      return { spec: null, errors };
+      return { spec: null, errors, resolvedFiles };
     }
+
+    resolvedFiles.add(rootFile.path);
 
     try {
       const rootObj = yaml.load(rootFile.content);
       if (!rootObj || typeof rootObj !== 'object') {
         errors.push(`Root file "${entrypoint}" is empty or not a valid YAML/JSON object.`);
-        return { spec: null, errors };
+        return { spec: null, errors, resolvedFiles };
       }
 
       const visited = new Set([entrypoint]);
-      const resolvedSpec = resolveNode(rootObj, entrypoint, files, visited, errors);
+      const resolvedSpec = resolveNode(rootObj, entrypoint, files, visited, errors, resolvedFiles);
 
-      return { spec: resolvedSpec, errors };
+      return { spec: resolvedSpec, errors, resolvedFiles };
     } catch (err) {
       errors.push(`Error parsing root file "${entrypoint}": ${err.message}`);
-      return { spec: null, errors };
+      return { spec: null, errors, resolvedFiles };
     }
   }
 };
