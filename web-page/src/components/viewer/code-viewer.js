@@ -6,7 +6,6 @@ import { marked } from 'marked';
 import SwaggerUI from 'swagger-ui-dist/swagger-ui-bundle.js';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
-import './floating-action.js';
 
 export class CodeViewer extends LitElement {
   static properties = {
@@ -25,6 +24,7 @@ export class CodeViewer extends LitElement {
     this.activeFile = null;
     this.files = [];
     this.theme = 'light';
+    this.currentContentType = ''; // Track what's being displayed
     
     this.subs = [];
     this.swaggerInstance = null;
@@ -152,6 +152,7 @@ export class CodeViewer extends LitElement {
           No active preview. Select a spec or document.
         </div>
       `;
+      this.currentContentType = '';
       return;
     }
 
@@ -160,15 +161,23 @@ export class CodeViewer extends LitElement {
     const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu');
     const isMermaid = path.endsWith('.mermaid') || path.endsWith('.mmd');
 
+    // Update content type for floating button
     if (isMarkdown) {
+      this.currentContentType = 'markdown';
       this.renderMarkdownPreview(container);
     } else if (isPuml) {
+      this.currentContentType = 'plantuml';
       this.renderPlantumlPreview(container);
     } else if (isMermaid) {
+      this.currentContentType = 'mermaid';
       this.renderMermaidPreview(container);
     } else {
+      this.currentContentType = 'swagger';
       this.renderSwaggerPreview(container);
     }
+
+    // Force re-render to update floating-action contentType
+    this.requestUpdate();
   }
 
   /**
@@ -259,6 +268,7 @@ export class CodeViewer extends LitElement {
                             entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
                             entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
                             entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
+    
     if (!isRootCandidate) {
       const rootFile = this.files.find(f => 
         f.type === 'file' && 
@@ -267,205 +277,162 @@ export class CodeViewer extends LitElement {
          f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
          f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
       );
-      if (rootFile) {
-        entrypoint = rootFile.path;
-      }
+      if (rootFile) entrypoint = rootFile.path;
     }
 
-    // Resolve spec object using resolver service
-    const { spec, errors } = resolverService.resolve(this.files, entrypoint);
-
-    if (errors.length > 0) {
-      // If there are bundler/resolver errors, show them at the top as a warnings panel!
-      const errorListHtml = errors.map(err => `<li>${err}</li>`).join('');
-      
+    const { spec, specIndex } = resolverService.resolve(this.files, entrypoint);
+    if (!spec) {
       container.innerHTML = `
-        <div style="display: flex; flex-direction: column; height: 100%;">
-          <div class="resolver-warnings-panel" style="background-color: rgba(239, 68, 68, 0.1); border-bottom: 1px solid var(--color-error); padding: 12px 24px; max-height: 150px; overflow-y: auto;">
-            <div style="font-weight: 700; color: var(--color-error); font-size: 0.9rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              Reference Resolver Warnings (${errors.length})
-            </div>
-            <ul style="font-family: monospace; font-size: 0.8rem; color: var(--text-primary); margin-left: 1.2rem;">
-              ${errorListHtml}
-            </ul>
-          </div>
-          <div id="swagger-ui-mount" style="flex: 1; overflow-y: auto;"></div>
-        </div>
-      `;
-    } else {
-      container.innerHTML = `<div id="swagger-ui-mount" style="height: 100%; overflow-y: auto;"></div>`;
-    }
-
-    const mountDiv = container.querySelector('#swagger-ui-mount');
-    if (!mountDiv) return;
-
-    if (!spec) {
-      mountDiv.innerHTML = `
-        <div style="padding: 2rem; color: var(--text-secondary); font-style: italic; text-align: center;">
-          Failed to load specification. Make sure root openapi.yaml is valid.
-        </div>
-      `;
-      return;
-    }
-
-    try {
-      // Instantiate Swagger UI
-      this.swaggerInstance = SwaggerUI({
-        spec,
-        dom_id: '#swagger-ui-mount',
-        deepLinking: true,
-        onComplete: () => {
-          // Once rendered, run diagram processor for any diagrams in operations descriptions
-          const isDark = this.theme === 'dark';
-          renderDiagrams(mountDiv, isDark);
-        }
-      });
-    } catch (err) {
-      mountDiv.innerHTML = `
         <div style="padding: 2rem; color: var(--color-error); font-family: monospace;">
-          Swagger UI instantiation error: ${err.message}
+          Could not resolve OpenAPI/Swagger specification. Please check your file references.
         </div>
       `;
-    }
-  }
-
-  handleExportHTML() {
-    const active = this.activeFile;
-    if (!active) return;
-
-    const path = active.path.toLowerCase();
-    if (path.endsWith('.md') || path.endsWith('.markdown')) {
-      this.exportMarkdownHTML(active);
-    } else if (path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu')) {
-      this.exportDiagramHTML(active, 'plantuml-preview');
-    } else if (path.endsWith('.mermaid') || path.endsWith('.mmd')) {
-      this.exportDiagramHTML(active, 'mermaid-preview');
-    } else {
-      this.exportSwaggerHTML(active);
-    }
-  }
-
-  exportDiagramHTML(active, targetClass) {
-    const container = document.querySelector('.' + targetClass);
-    if (!container) {
-      alert('Diagram preview container not found in DOM.');
       return;
     }
 
-    const renderedHtml = container.innerHTML;
-    const filename = active.path.split('/').pop().replace(/\.(pu|puml|plantuml|mmd|mermaid)$/i, '');
-    const standaloneHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${filename} - Diagram Preview</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .mermaid, 
-    .plantuml-svg-container {
-      display: flex;
-      justify-content: center;
-      padding: 1.5rem;
-      background-color: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      overflow-x: auto;
-    }
-    .plantuml-svg-container svg, 
-    .mermaid svg {
-      max-width: 100%;
-      height: auto;
-    }
-  </style>
-</head>
-<body>
-  <div style="padding: 2rem; width: 100%; max-width: 1200px; box-sizing: border-box;">
-    ${renderedHtml}
-  </div>
-</body>
-</html>`;
-
-    const blob = new Blob([standaloneHtml], { type: 'text/html' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename + '-diagram.html';
-    link.click();
+    container.innerHTML = '<div id="swagger-ui"></div>';
+    this.swaggerInstance = SwaggerUI({
+      spec,
+      dom_id: '#swagger-ui',
+      deepLinking: true
+    });
   }
 
-  exportSwaggerHTML(active) {
-    let entrypoint = active.path;
-    const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
-                            entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
-                            entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
-                            entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
-    if (!isRootCandidate) {
-      const rootFile = this.files.find(f => 
-        f.type === 'file' && 
-        (f.path === 'openapi.yaml' || f.path.endsWith('/openapi.yaml') ||
-         f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
-         f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
-         f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
-      );
-      if (rootFile) {
-        entrypoint = rootFile.path;
+  /**
+   * EXPORT HANDLERS
+   */
+
+  /**
+   * Export diagram (Mermaid/PlantUML) as SVG
+   */
+  async exportDiagramSVG() {
+    try {
+      const container = document.getElementById('previewer-target');
+      const svg = container?.querySelector('svg');
+
+      if (!svg) {
+        alert('No diagram found to export');
+        return;
       }
+
+      // Clone the SVG to avoid modifying the original
+      const svgClone = svg.cloneNode(true);
+      
+      // Set viewBox if not already set
+      if (!svgClone.hasAttribute('viewBox')) {
+        const bbox = svg.getBBox?.();
+        if (bbox) {
+          svgClone.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+        }
+      }
+
+      // Create blob and download
+      const svgString = new XMLSerializer().serializeToString(svgClone);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+      this.downloadFile(blob, 'diagram.svg');
+    } catch (err) {
+      console.error('Error exporting SVG:', err);
+      alert('Failed to export SVG: ' + err.message);
     }
-
-    const { spec } = resolverService.resolve(this.files, entrypoint);
-
-    if (!spec) {
-      alert('Could not resolve spec to export.');
-      return;
-    }
-
-    // Embed fully resolved specification JSON inline
-    const standaloneHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OpenStudio - Standalone Swagger Preview</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.8/swagger-ui.css" />
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #fafafa;
-    }
-  </style>
-</head>
-<body>
-  <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.11.8/swagger-ui-bundle.js"></script>
-  <script>
-    window.onload = () => {
-      window.ui = SwaggerUIBundle({
-        spec: ${JSON.stringify(spec)},
-        dom_id: '#swagger-ui',
-        deepLinking: true
-      });
-    };
-  </script>
-</body>
-</html>`;
-
-    const blob = new Blob([standaloneHtml], { type: 'text/html' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = active.path.split('/').pop().replace(/\.(yaml|yml|json)$/i, '') + '-preview.html';
-    link.click();
   }
 
+  /**
+   * Export diagram (Mermaid/PlantUML) as PNG
+   * Note: This uses canvas rendering. For higher quality, consider using a library like:
+   * - html2canvas (https://html2canvas.hertzen.com/)
+   * - svg2png (https://www.npmjs.com/package/svg2png)
+   */
+  async exportDiagramPNG() {
+    try {
+      const container = document.getElementById('previewer-target');
+      const svg = container?.querySelector('svg');
+
+      if (!svg) {
+        alert('No diagram found to export');
+        return;
+      }
+
+      // Create canvas from SVG
+      const canvas = await this.svgToCanvas(svg);
+      
+      canvas.toBlob((blob) => {
+        this.downloadFile(blob, 'diagram.png');
+      }, 'image/png');
+    } catch (err) {
+      console.error('Error exporting PNG:', err);
+      alert('Failed to export PNG: ' + err.message);
+    }
+  }
+
+  /**
+   * Convert SVG to Canvas for PNG export
+   */
+  async svgToCanvas(svg) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Get dimensions
+    const bbox = svg.getBBox?.() || { x: 0, y: 0, width: 800, height: 600 };
+    const padding = 20;
+    const width = bbox.width + padding * 2;
+    const height = bbox.height + padding * 2;
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Set white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Create image from SVG
+    const svgString = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, padding, padding);
+        URL.revokeObjectURL(url);
+        resolve(canvas);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load SVG as image'));
+      };
+      img.src = url;
+    });
+  }
+
+  /**
+   * Export diagram as PDF using print dialog
+   */
+  async exportDiagramPDF() {
+    // Use browser print functionality
+    window.print();
+  }
+
+  /**
+   * Export Markdown/Swagger as HTML
+   */
+  handleExportHTML = () => {
+    const path = this.activeFile?.path?.toLowerCase() || '';
+    const isMarkdown = path.endsWith('.md') || path.endsWith('.markdown');
+    const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu');
+    const isMermaid = path.endsWith('.mermaid') || path.endsWith('.mmd');
+
+    if (isMarkdown) {
+      this.exportMarkdownHTML(this.activeFile);
+    } else if (isPuml || isMermaid) {
+      this.exportDiagramHTML(this.activeFile);
+    } else {
+      this.exportSwaggerHTML(this.activeFile);
+    }
+  };
+
+  /**
+   * Export Markdown as standalone HTML
+   */
   exportMarkdownHTML(active) {
     const container = document.querySelector('.markdown-preview');
     if (!container) {
@@ -603,15 +570,175 @@ export class CodeViewer extends LitElement {
 </html>`;
 
     const blob = new Blob([standaloneHtml], { type: 'text/html' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename + '-preview.html';
-    link.click();
+    this.downloadFile(blob, filename + '-preview.html');
   }
 
-  handleExportPDF() {
-    window.print();
+  /**
+   * Export Diagram (Mermaid/PlantUML) as standalone HTML
+   */
+  exportDiagramHTML(active) {
+    const container = document.getElementById('previewer-target');
+    const svg = container?.querySelector('svg');
+
+    if (!svg) {
+      alert('No diagram to export');
+      return;
+    }
+
+    const renderedHtml = container.innerHTML;
+    const filename = active.path.split('/').pop().replace(/\.(mermaid|mmd|puml|plantuml|pu)$/i, '');
+    const standaloneHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${filename} - Diagram</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"><\/script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .diagram-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .plantuml-svg-container {
+      display: flex;
+      justify-content: center;
+      padding: 1.5rem;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .plantuml-svg-container svg, 
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="diagram-container">
+    ${renderedHtml}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([standaloneHtml], { type: 'text/html' });
+    this.downloadFile(blob, filename + '-diagram.html');
   }
+
+  /**
+   * Export Swagger as standalone HTML
+   */
+  exportSwaggerHTML(active) {
+    let entrypoint = active.path;
+    const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
+                            entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
+                            entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
+                            entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
+    if (!isRootCandidate) {
+      const rootFile = this.files.find(f => 
+        f.type === 'file' && 
+        (f.path === 'openapi.yaml' || f.path.endsWith('/openapi.yaml') ||
+         f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
+         f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
+         f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
+      );
+      if (rootFile) {
+        entrypoint = rootFile.path;
+      }
+    }
+
+    const { spec } = resolverService.resolve(this.files, entrypoint);
+
+    if (!spec) {
+      alert('Could not resolve spec to export.');
+      return;
+    }
+
+    // Embed fully resolved specification JSON inline
+    const standaloneHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenStudio - Standalone Swagger Preview</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.8/swagger-ui.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.8/swagger-ui-bundle.js"><\/script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        spec: ${JSON.stringify(spec)},
+        dom_id: '#swagger-ui',
+        deepLinking: true
+      });
+    };
+  <\/script>
+</body>
+</html>`;
+
+    const blob = new Blob([standaloneHtml], { type: 'text/html' });
+    const name = active.path.split('/').pop().replace(/\.(yaml|yml|json)$/i, '');
+    this.downloadFile(blob, name + '-preview.html');
+  }
+
+  /**
+   * Utility: Download file blob
+   */
+  downloadFile(blob, filename) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  /**
+   * Export PDF (uses browser print)
+   */
+  handleExportPDF = () => {
+    window.print();
+  };
+
+  /**
+   * Export diagram as SVG
+   */
+  handleExportSVG = () => {
+    this.exportDiagramSVG();
+  };
+
+  /**
+   * Export diagram as PNG
+   */
+  handleExportPNG = () => {
+    this.exportDiagramPNG();
+  };
 
   render() {
     return html`
@@ -620,8 +747,11 @@ export class CodeViewer extends LitElement {
         
         ${this.activeFile ? html`
           <floating-action
+            contentType="${this.currentContentType}"
             @export-html=${this.handleExportHTML}
             @export-pdf=${this.handleExportPDF}
+            @export-svg=${this.handleExportSVG}
+            @export-png=${this.handleExportPNG}
           ></floating-action>
         ` : ''}
       </div>
