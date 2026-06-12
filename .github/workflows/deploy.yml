@@ -28,11 +28,15 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          # Tells the cache action where to find package-lock.json
+          cache-dependency-path: web-page/package-lock.json
 
       - name: Install dependencies
+        working-directory: web-page
         run: npm ci
 
       - name: Build
+        working-directory: web-page
         run: npm run build
         env:
           BASE_URL: /${{ github.event.repository.name }}/
@@ -40,7 +44,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          # Points to the dist folder inside the web-page directory
+          path: web-page/dist
 
   deploy:
     needs: build
