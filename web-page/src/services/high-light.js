@@ -10,47 +10,137 @@ import { EditorView, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/
 //  1. PLANTUML LANGUAGE MODE
 // ─────────────────────────────────────────────────────────
 /**
- * A custom CodeMirror StreamLanguage tokenizer for PlantUML (.puml / .plantuml).
- *
- * Why a custom StreamLanguage instead of highlight.js?
- *   - highlight.js does NOT have a built-in PlantUML grammar.
- *   - CodeMirror's StreamLanguage lets us define a lightweight tokenizer that maps
- *     PlantUML keywords, comments, strings, numbers etc. to @lezer/highlight tags.
- *   - The returned string names (e.g. "keyword", "meta") are matched against the
- *     HighlightStyle defined below (specStudioHighlightStyle) to apply CSS colors.
- *
- * Suggested improvement (from review):
- *   Consider merging PlantUML and Mermaid tokenizers into a shared helper if they
- *   share many patterns (comments, strings, numbers). But keeping them separate
- *   gives clarity for future grammar refinement.
+ * A custom CodeMirror StreamLanguage tokenizer for PlantUML (.pu / .puml / .plantuml).
+ * Features block comments, line comments, preprocessors, keywords, shapes/types, hex colors, named colors.
  */
+const plantumlKeywords = new Set([
+  "across", "activate", "again", "allow_mixing", "allowmixing", "also", "alt", "as", "attribute", "attributes",
+  "autonumber", "bold", "bottom", "box", "break", "caption", "center", "circle", "circled", "circles",
+  "color", "create", "critical", "dashed", "deactivate", "description", "destroy", "detach", "dotted", "down",
+  "else", "elseif", "empty", "end", "endcaption", "endfooter", "endheader", "endif", "endlegend", "endtitle",
+  "endwhile", "false", "field", "fields", "footbox", "footer", "fork", "group", "header", "hide", "hnote",
+  "if", "is", "italic", "kill", "left", "legend", "link", "loop", "mainframe", "member", "members",
+  "method", "methods", "namespace", "newpage", "normal", "note", "of", "on", "opt", "order", "over",
+  "page", "par", "partition", "plain", "private", "protected", "public", "ref", "repeat", "return",
+  "right", "rnote", "rotate", "show", "skin", "skinparam", "split", "sprite", "start", "stereotype",
+  "stereotypes", "stop", "style", "then", "title", "together", "top", "true", "up", "while",
+  // gantt
+  "starts", "ends", "closed", "after", "colored", "lasts", "happens", "in", "at", "are", "to", "the", "and",
+  "printscale", "ganttscale", "projectscale", "daily", "weekly", "monthly", "quarterly", "yearly", "zoom",
+  "day", "days", "week", "weeks", "complete", "displays", "same", "row", "pauses"
+]);
+
+const plantumlTypes = new Set([
+  "abstract", "action", "actor", "agent", "annotation", "archimate", "artifact", "boundary", "card", "cloud",
+  "collections", "component", "control", "database", "diamond", "entity", "enum", "exception", "file", "folder",
+  "frame", "hexagon", "json", "label", "map", "metaclass", "node", "object", "package", "participant",
+  "person", "process", "protocol", "queue", "rectangle", "relationship", "stack", "state", "storage",
+  "struct", "usecase", "class", "interface", "concise", "robust",
+  // gantt
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "today", "project", "labels",
+  "last", "first", "column"
+]);
+
+const plantumlColors = new Set([
+  "application", "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "business", "beige", "bisque",
+  "black", "blanchedalmond", "blue", "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse",
+  "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", "darkcyan",
+  "darkgoldenrod", "darkgray", "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen",
+  "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslatehover", "darkslategray", "darkslategrey",
+  "darkturquoise", "darkviolet", "darkorange", "deeppink", "deepskyblue", "dimgray", "dimgrey",
+  "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro", "ghostwhite", "gold",
+  "goldenrod", "gray", "green", "greenyellow", "grey", "honeydew", "hotpink", "implementation", "indianred",
+  "indigo", "ivory", "khaki", "lavender", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue",
+  "lightcoral", "lightcyan", "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink",
+  "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey",
+  "lightsteelblue", "lightyellow", "lime", "limegreen", "linen", "motivation", "magenta", "maroon",
+  "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslatehover", "mediumspringgreen",
+  "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin", "navajowhite",
+  "navy", "oldlace", "olive", "olivedrab", "orange", "orangered", "orchid", "physical", "palegoldenrod",
+  "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", "pink", "plum",
+  "powderblue", "purple", "red", "rosybrown", "royalblue", "strategy", "saddlebrown", "salmon", "sandybrown",
+  "seagreen", "seashell", "sienna", "silver", "skyblue", "slatehover", "slategray", "slategrey", "snow",
+  "springgreen", "steelblue", "technology", "tan", "teal", "thistle", "tomato", "turquoise", "violet",
+  "wheat", "white", "whitesmoke", "yellow", "yellowgreen"
+]);
+
 const plantumlLanguage = StreamLanguage.define({
   name: "plantuml",
-  token(stream) {
-    if (stream.match(/^@startuml/) || stream.match(/^@enduml/)) {
-      return "meta";
-    }
-    if (stream.match(/^\s*(actor|boundary|control|entity|database|collections|queue|class|interface|state|usecase|component|node|folder|frame|cloud|database|storage|agent|artifact|card|file|package|rectangle|queue|stack)\b/)) {
-      return "keyword";
-    }
-    if (stream.match(/^\s*(title|header|footer|legend|caption|right|left|center|as|autonumber|activate|deactivate|alt|else|opt|loop|par|critical|option|break|note|over|of|to|link|click)\b/)) {
-      return "keyword";
-    }
-    if (stream.match(/^'[^\n]*/) || stream.match(/^\/'[\s\S]*?'\//)) {
+  startState() {
+    return { inBlockComment: false };
+  },
+  token(stream, state) {
+    if (state.inBlockComment) {
+      if (stream.match(/.*?'\//)) {
+        state.inBlockComment = false;
+      } else {
+        stream.skipToEnd();
+      }
       return "comment";
     }
-    if (stream.match(/^"[^"]*"/) || stream.match(/^'[^']*'/)) {
+
+    if (stream.eatSpace()) return null;
+
+    // Block comment
+    if (stream.match(/^\/'/)) {
+      state.inBlockComment = true;
+      if (stream.match(/.*?'\//)) {
+        state.inBlockComment = false;
+      } else {
+        stream.skipToEnd();
+      }
+      return "comment";
+    }
+
+    // Line comment
+    if (stream.match(/^'[^\n]*/)) {
+      return "comment";
+    }
+
+    // Preprocessor and start/end commands
+    if (stream.match(/^@(start|end)(uml|mindmap|gantt|board|bpm|chen|chronology|creole|cute|def|ditaa|dot|ebnf|files|flow|git|hcl|jcckit|json|latex|math|nwdiag|project|regex|salt|tree|wbs|wire|yaml)\b/i)) {
+      return "meta";
+    }
+    if (stream.match(/^![a-zA-Z_0-9]+/)) {
+      return "meta";
+    }
+
+    // Strings
+    if (stream.match(/^"[^"]*"/)) {
       return "string";
     }
-    if (stream.match(/^[-=.>|<()]+/)) {
+
+    // Hex colors
+    if (stream.match(/^#[0-9a-fA-F]{6}\b/i) || stream.match(/^#[0-9a-fA-F]{3}\b/i) || stream.match(/^#[0-9a-fA-F]{8}\b/i)) {
+      return "atom";
+    }
+
+    // Arrows and connectors
+    if (stream.match(/^([-.]\s*)+\>/) || stream.match(/^\<([-.]\s*)+/) || stream.match(/^([-.]\s*)+/) || stream.match(/^==+/) || stream.match(/^--+/)) {
       return "operator";
     }
+
+    // Numbers
     if (stream.match(/^\d+/)) {
       return "number";
     }
-    if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) {
+
+    // Words (Keywords, Types, Named Colors, Variables)
+    const wordMatch = stream.match(/^[a-zA-Z_][a-zA-Z0-9_-]*/);
+    if (wordMatch) {
+      const word = wordMatch[0].toLowerCase();
+      if (plantumlKeywords.has(word)) {
+        return "keyword";
+      }
+      if (plantumlTypes.has(word)) {
+        return "typeName";
+      }
+      if (plantumlColors.has(word)) {
+        return "atom";
+      }
       return "variableName";
     }
+
     stream.next();
     return null;
   }
@@ -60,52 +150,75 @@ export { plantumlLanguage };
 // ─────────────────────────────────────────────────────────
 //  2. PLANTUML LANGUAGE SUPPORT
 // ─────────────────────────────────────────────────────────
-/**
- * A LanguageSupport wrapper that makes plantumlLanguage usable as a CodeMirror
- * extension (passed into the langCompartment in code-editor.js).
- *
- * Suggested improvement:
- *   If highlight.js ever adds PlantUML support, this could be replaced by a
- *   StreamLanguage wrapper around the hljs grammar:
- *     import puml from 'highlight.js/lib/languages/plantuml';
- *     const cmPuml = StreamLanguage.define(hljs.getLanguage('plantuml'));
- */
 const plantumlSupport = new LanguageSupport(plantumlLanguage);
 export { plantumlSupport };
 
 // ─────────────────────────────────────────────────────────
 //  3. MERMAID LANGUAGE MODE
 // ─────────────────────────────────────────────────────────
-/**
- * A custom CodeMirror StreamLanguage tokenizer for Mermaid (.mermaid / .mmd).
- *
- * Same rationale as PlantUML — highlight.js lacks a Mermaid grammar, so we
- * implement a lightweight tokenizer here.
- */
+const mermaidKeywords = new Set([
+  "participant", "actor", "boundary", "control", "entity", "database", "collections", "queue", "as", "box",
+  "create", "destroy", "autonumber", "activate", "deactivate", "alt", "else", "opt", "loop", "par", "and",
+  "rect", "critical", "option", "break", "note", "over", "of", "to", "link", "click", "style", "classdef",
+  "class", "click", "subgraph", "end", "title", "acctitle", "accdescr", "direction", "interpolate", "fill",
+  "stroke", "stroke-width", "linkstyle", "theme", "left", "right",
+  // gantt
+  "dateformat", "axisformat", "section", "completed", "active", "milestone", "crit",
+  // gitgraph
+  "commit", "branch", "checkout", "merge", "tag", "id", "type", "reverse"
+]);
+
+const mermaidTypes = new Set([
+  "graph", "flowchart", "sequencediagram", "classdiagram", "statediagram", "statediagram-v2", "erdiagram",
+  "journey", "gantt", "pie", "quadrantchart", "requirementdiagram", "gitgraph", "c4context", "c4container",
+  "c4component", "mindmap", "timeline", "zenuml", "block-beta", "packetbeta", "kanban", "architecture",
+  // directions
+  "tb", "td", "bt", "rl", "lr"
+]);
+
 const mermaidLanguage = StreamLanguage.define({
   name: "mermaid",
   token(stream) {
-    if (stream.match(/^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|quadrantChart|requirementDiagram|gitGraph|C4Context|mindmap|timeline|zenuml)\b/)) {
-      return "meta";
-    }
-    if (stream.match(/^\s*(participant|actor|boundary|control|entity|database|collections|queue|as|box|create|destroy|autonumber|activate|deactivate|alt|else|opt|loop|par|and|rect|critical|option|break|note|over|of|to|link|click|style|classDef|class|click|subgraph|end)\b/)) {
-      return "keyword";
-    }
+    if (stream.eatSpace()) return null;
+
+    // Line comment
     if (stream.match(/^%%[^\n]*/)) {
       return "comment";
     }
-    if (stream.match(/^"[^"]*"/) || stream.match(/^'[^']*'/)) {
+
+    // Directives
+    if (stream.match(/^%%\{[\s\S]*?\}%%/)) {
+      return "meta";
+    }
+
+    // Strings
+    if (stream.match(/^"[^"]*"/)) {
       return "string";
     }
-    if (stream.match(/^[-=>.():|&]+/)) {
+
+    // Arrows and connectors
+    if (stream.match(/^(--\>|-\.-\>|-\-\-|-|-\.-\|==\>)/)) {
       return "operator";
     }
+
+    // Numbers
     if (stream.match(/^\d+/)) {
       return "number";
     }
-    if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) {
+
+    // Words (Keywords, Types, Variables)
+    const wordMatch = stream.match(/^[a-zA-Z_][a-zA-Z0-9_-]*/);
+    if (wordMatch) {
+      const word = wordMatch[0].toLowerCase();
+      if (mermaidKeywords.has(word)) {
+        return "keyword";
+      }
+      if (mermaidTypes.has(word)) {
+        return "meta";
+      }
       return "variableName";
     }
+
     stream.next();
     return null;
   }
@@ -115,9 +228,6 @@ export { mermaidLanguage };
 // ─────────────────────────────────────────────────────────
 //  4. MERMAID LANGUAGE SUPPORT
 // ─────────────────────────────────────────────────────────
-/**
- * LanguageSupport wrapper for the Mermaid tokenizer.
- */
 const mermaidSupport = new LanguageSupport(mermaidLanguage);
 export { mermaidSupport };
 
@@ -125,15 +235,6 @@ export { mermaidSupport };
 //  5. NESTED LANGUAGES FOR MARKDOWN CODE BLOCKS
 // ─────────────────────────────────────────────────────────
 /**
- * LanguageDescription array used when the editor is in Markdown mode.
- * CodeMirror's markdown() parser uses these to highlight fenced code blocks
- * (e.g. ```yaml, ```plantuml) with the correct language mode.
- *
- * Each entry is lazy-loaded so we don't parse PlantUML/Mermaid unless the
- * user actually opens a markdown file that contains such blocks.
- *
- * Suggested improvement:
- *   Add LanguageDescription entries for additional languages as needed.
  *   If highlight.js grammars were used via StreamLanguage wrappers, we could
  *   register them here too — e.g. wrapping hljs's yaml grammar instead of
  *   importing @codemirror/lang-yaml.

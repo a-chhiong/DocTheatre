@@ -46,20 +46,25 @@ Welcome to your **OpenStudio** project. This Markdown file serves as supporting 
 
 ## Diagram Example (Mermaid)
 
-\`\`\`mermaid
-sequenceDiagram
-    participant User
-    participant Editor
-    participant Previewer
-    User->>Editor: Type YAML/Markdown
-    Editor->>Previewer: Update State
-    Previewer->>User: Display live docs & diagrams
-\`\`\`
+Here is a sequence diagram imported from a standalone Mermaid file:
+@import "template.mmd"
 
 ## Diagram Example (PlantUML)
 
-\`\`\`plantuml
-@startuml
+Here is a component diagram imported from a standalone PlantUML file:
+@import "template.puml"
+`;
+
+export const DEFAULT_MERMAID = `sequenceDiagram
+participant User
+participant Editor
+participant Previewer
+User->>Editor: Type YAML/Markdown
+Editor->>Previewer: Update State
+Previewer->>User: Display live docs & diagrams
+`;
+
+export const DEFAULT_PLANTUML = `@startuml
 actor User
 boundary "OpenStudio" as Studio
 control "Project State" as State
@@ -68,5 +73,4 @@ User -> Studio : Edit Files
 Studio -> State : Debounce Autosave
 State -> Studio : Update Live Preview
 @enduml
-\`\`\`
 `;

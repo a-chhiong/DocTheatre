@@ -3,7 +3,7 @@ import { projectManager } from '../../services/project-manager.js';
 
 export class MenuDropdown extends LitElement {
   static properties = {
-    currentKey: { type: String }
+    currentKey: { type: String },
   };
 
   static styles = css`
@@ -126,33 +126,79 @@ export class MenuDropdown extends LitElement {
     e.target.value = ''; // Reset input
   }
 
-  handleNewProject() {
-    const name = prompt('Enter project name:', 'My OpenStudio API');
-    if (name) {
-      const cleanStart = confirm('Would you like a clean start (blank project with a single openapi.yaml)?\n\nClick "OK" for a clean blank project.\nClick "Cancel" to initialize with the sample templates.');
-      projectManager.createNewProject(name, cleanStart);
+  // Helper method to request a dialog prompt from the global root window layer
+  _requestDialog(options) {
+    return new Promise((resolve) => {
+      const event = new CustomEvent('show-global-dialog', {
+        bubbles: true,
+        composed: true,
+        detail: { options, resolve }
+      });
+      this.dispatchEvent(event);
+    });
+  }
+
+  async handleNewProject() {
+    // 1. Prompt for Project Name via event bridge
+    const name = await this._requestDialog({
+      title: 'New Project',
+      message: 'Enter project name:',
+      defaultValue: 'My OpenStudio API',
+      type: 'prompt'
+    });
+
+    // If the user presses Cancel or submits empty string, abort early
+    if (!name) {
+      this.dispatchEvent(new CustomEvent('close-menu', { bubbles: true, composed: true }));
+      return;
     }
+
+    // 2. Decision Tree
+    const choice = await this._requestDialog({
+      title: 'Project Structure Initializer',
+      message: 'Would you like a clean start (blank project with a single openapi.yaml)?\n\nSelect "Yes" for blank, "No" to initialize with sample templates, or "Cancel" to abort.',
+      type: 'yes-no-cancel'
+    });
+
+    if (choice === 'yes') {
+      projectManager.createNewProject(name, true);
+    } else if (choice === 'no') {
+      projectManager.createNewProject(name, false);
+    }
+
     this.dispatchEvent(new CustomEvent('close-menu', { bubbles: true, composed: true }));
   }
 
-  handleSaveProject() {
-    const key = this.currentKey;
-    alert(`Project successfully saved locally.\nYour Project Key is:\n${key}`);
+  async handleSaveProject() {const key = this.currentKey;
+    
+    await this._requestDialog({
+      title: 'Project Saved',
+      message: `Project successfully saved locally.\n\nYour Project Key is:\n${key}`,
+      type: 'alert'
+    });
+
     this.dispatchEvent(new CustomEvent('close-menu', { bubbles: true, composed: true }));
   }
 
-  async handleDeleteProject() {
-    if (confirm('Are you sure you want to delete this project and all its files permanently? This action cannot be undone.')) {
-      if (confirm('This action is permanent and cannot be recovered. Are you absolutely certain you want to proceed with the deletion?')) {
-        try {
-          const keyToDelete = this.currentKey;
-          await projectManager.deleteProject(keyToDelete);
-          this.dispatchEvent(new CustomEvent('close-menu', { bubbles: true, composed: true }));
-        } catch (err) {
-          alert('Failed to delete project: ' + err.message);
-        }
+  async handleDeleteProject() {const confirmed = await this._requestDialog({
+      title: 'Delete Project',
+      message: 'Are you sure you want to delete this project and all its files permanently?\n\nWARNING: This action is PERMANENT and CANNOT be undone. All files will be lost.',
+      type: 'confirm'
+    });
+
+    if (confirmed) {
+      try {
+        const keyToDelete = this.currentKey;
+        await projectManager.deleteProject(keyToDelete);
+      } catch (err) {
+        await this._requestDialog({
+          title: 'Deletion Failed',
+          message: 'Failed to delete project: ' + err.message,
+          type: 'alert'
+        });
       }
     }
+    this.dispatchEvent(new CustomEvent('close-menu', { bubbles: true, composed: true }));
   }
 
   handleExportZip() {

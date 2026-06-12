@@ -91,6 +91,57 @@ export class CodeViewer extends LitElement {
     this._updateTimeout = setTimeout(() => this.updatePreview(), 50);
   }
 
+  resolvePath(basePath, relativePath) {
+    const baseSegments = basePath ? basePath.split('/') : [];
+    baseSegments.pop(); // remove file name segment to get current directory
+    const relSegments = relativePath.split('/');
+
+    for (const seg of relSegments) {
+      if (seg === '.' || seg === '') continue;
+      if (seg === '..') {
+        if (baseSegments.length > 0) baseSegments.pop();
+      } else {
+        baseSegments.push(seg);
+      }
+    }
+    return baseSegments.join('/');
+  }
+
+  preprocessImports(content, basePath) {
+    if (!content) return '';
+    return content.replace(/^@import\s+['"]?([^'"]+)['"]?\s*$/gm, (match, relPath) => {
+      const resolvedPath = this.resolvePath(basePath, relPath);
+      const importedFile = this.files.find(f => f.path === resolvedPath && f.type === 'file');
+      if (importedFile) {
+        const ext = relPath.split('.').pop().toLowerCase();
+        let lang = '';
+        if (ext === 'puml' || ext === 'plantuml' || ext === 'pu') {
+          lang = 'plantuml';
+        } else if (ext === 'mermaid' || ext === 'mmd') {
+          lang = 'mermaid';
+        } else if (ext === 'yaml' || ext === 'yml') {
+          lang = 'yaml';
+        } else if (ext === 'md' || ext === 'markdown') {
+          return this.preprocessImports(importedFile.content, resolvedPath);
+        } else {
+          lang = ext;
+        }
+        return `\`\`\`${lang}\n${importedFile.content}\n\`\`\``;
+      }
+      return `*Error: Imported file not found at "${resolvedPath}"*`;
+    });
+  }
+
+  escapeHTML(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   updatePreview() {
     const container = document.getElementById('previewer-target');
     if (!container) return;
@@ -104,22 +155,29 @@ export class CodeViewer extends LitElement {
       return;
     }
 
-    const isMarkdown = this.activeFile.path.endsWith('.md');
+    const path = this.activeFile.path.toLowerCase();
+    const isMarkdown = path.endsWith('.md') || path.endsWith('.markdown');
+    const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu');
+    const isMermaid = path.endsWith('.mermaid') || path.endsWith('.mmd');
 
     if (isMarkdown) {
       this.renderMarkdownPreview(container);
+    } else if (isPuml) {
+      this.renderPlantumlPreview(container);
+    } else if (isMermaid) {
+      this.renderMermaidPreview(container);
     } else {
       this.renderSwaggerPreview(container);
     }
   }
 
   /**
-   * 1. Render Markdown with client-side diagrams
+   * 1. Render Markdown with client-side diagrams and import preprocessing
    */
   async renderMarkdownPreview(container) {
     try {
-      const rawText = this.activeFile.content;
-      const htmlContent = marked.parse(rawText || '');
+      const preprocessedText = this.preprocessImports(this.activeFile.content, this.activeFile.path);
+      const htmlContent = marked.parse(preprocessedText || '');
       
       container.innerHTML = `
         <div class="markdown-preview">
@@ -144,6 +202,44 @@ export class CodeViewer extends LitElement {
       container.innerHTML = `
         <div style="padding: 2rem; color: var(--color-error); font-family: monospace;">
           Error rendering Markdown document: ${err.message}
+        </div>
+      `;
+    }
+  }
+
+  async renderPlantumlPreview(container) {
+    try {
+      const escapedText = this.escapeHTML(this.activeFile.content || '');
+      container.innerHTML = `
+        <div class="plantuml-preview" style="padding: 1.5rem; height: 100%; overflow: auto;">
+          <pre><code class="language-plantuml">${escapedText}</code></pre>
+        </div>
+      `;
+      const isDark = this.theme === 'dark';
+      await renderDiagrams(container.querySelector('.plantuml-preview'), isDark);
+    } catch (err) {
+      container.innerHTML = `
+        <div style="padding: 2rem; color: var(--color-error); font-family: monospace;">
+          Error rendering PlantUML diagram: ${err.message}
+        </div>
+      `;
+    }
+  }
+
+  async renderMermaidPreview(container) {
+    try {
+      const escapedText = this.escapeHTML(this.activeFile.content || '');
+      container.innerHTML = `
+        <div class="mermaid-preview" style="padding: 1.5rem; height: 100%; overflow: auto;">
+          <pre><code class="language-mermaid">${escapedText}</code></pre>
+        </div>
+      `;
+      const isDark = this.theme === 'dark';
+      await renderDiagrams(container.querySelector('.mermaid-preview'), isDark);
+    } catch (err) {
+      container.innerHTML = `
+        <div style="padding: 2rem; color: var(--color-error); font-family: monospace;">
+          Error rendering Mermaid diagram: ${err.message}
         </div>
       `;
     }
@@ -238,11 +334,72 @@ export class CodeViewer extends LitElement {
     const active = this.activeFile;
     if (!active) return;
 
-    if (active.path.endsWith('.md')) {
+    const path = active.path.toLowerCase();
+    if (path.endsWith('.md') || path.endsWith('.markdown')) {
       this.exportMarkdownHTML(active);
+    } else if (path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu')) {
+      this.exportDiagramHTML(active, 'plantuml-preview');
+    } else if (path.endsWith('.mermaid') || path.endsWith('.mmd')) {
+      this.exportDiagramHTML(active, 'mermaid-preview');
     } else {
       this.exportSwaggerHTML(active);
     }
+  }
+
+  exportDiagramHTML(active, targetClass) {
+    const container = document.querySelector('.' + targetClass);
+    if (!container) {
+      alert('Diagram preview container not found in DOM.');
+      return;
+    }
+
+    const renderedHtml = container.innerHTML;
+    const filename = active.path.split('/').pop().replace(/\.(pu|puml|plantuml|mmd|mermaid)$/i, '');
+    const standaloneHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${filename} - Diagram Preview</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .mermaid, 
+    .plantuml-svg-container {
+      display: flex;
+      justify-content: center;
+      padding: 1.5rem;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .plantuml-svg-container svg, 
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div style="padding: 2rem; width: 100%; max-width: 1200px; box-sizing: border-box;">
+    ${renderedHtml}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([standaloneHtml], { type: 'text/html' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename + '-diagram.html';
+    link.click();
   }
 
   exportSwaggerHTML(active) {

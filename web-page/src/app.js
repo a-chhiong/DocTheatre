@@ -15,6 +15,7 @@ import './components/editor/code-editor.js';
 import './components/viewer/code-viewer.js';
 import './components/layout/menu-dropdown.js';
 import './components/layout/panel-toggles.js';
+import './components/common/app-dialog.js';
 
 export class AppRoot extends LitElement {
   static properties = {
@@ -54,6 +55,9 @@ export class AppRoot extends LitElement {
     // Handle relative file jumps in editor or markdown previewer
     this.addEventListener('open-ref-file', this.handleOpenRefFile);
 
+    // Catch global dialog requests from anywhere in your app tree
+    this.addEventListener('show-global-dialog', this.handleShowGlobalDialog);
+
     // Bootstrap database and load active projects
     await projectManager.init();
   }
@@ -63,6 +67,21 @@ export class AppRoot extends LitElement {
     this.subs.forEach(s => s.unsubscribe());
     this.removeEventListener('toggle-panel', this.handleTogglePanel);
     this.removeEventListener('open-ref-file', this.handleOpenRefFile);
+    this.removeEventListener('show-global-dialog', this.handleShowGlobalDialog);
+  }
+
+  async handleShowGlobalDialog(e) {
+    const { options, resolve } = e.detail;
+    const dialogEl = document.getElementById('global-dialog');
+    
+    if (dialogEl) {
+      // Await user interactions directly inside the template dialog instance
+      const result = await dialogEl.open(options);
+      // Send the selection payload straight back down to your execution context
+      resolve(result);
+    } else {
+      resolve(null);
+    }
   }
 
   handleTogglePanel(e) {
@@ -108,10 +127,17 @@ export class AppRoot extends LitElement {
       // If file doesn't exist, prompt to create it! (Super user-friendly!)
       if (confirm(`Referenced file "${resolved}" does not exist. Would you like to create it?`)) {
         let content = '';
-        if (resolved.endsWith('.md')) {
-          content = `# ${resolved.split('/').pop().replace('.md', '')}\n\nDocumentation.`;
-        } else if (resolved.endsWith('.yaml') || resolved.endsWith('.yml')) {
+        const lowerResolved = resolved.toLowerCase();
+        if (lowerResolved.endsWith('.md') || lowerResolved.endsWith('.markdown')) {
+          content = `# ${resolved.split('/').pop().replace(/\.(md|markdown)$/i, '')}\n\nDocumentation.`;
+        } else if (lowerResolved.endsWith('.yaml') || lowerResolved.endsWith('.yml')) {
           content = `# Reference schema\ntype: object`;
+        } else if (lowerResolved.endsWith('.json')) {
+          content = `{\n  "type": "object"\n}`;
+        } else if (lowerResolved.endsWith('.puml') || lowerResolved.endsWith('.plantuml') || lowerResolved.endsWith('.pu')) {
+          content = `@startuml\n\n@enduml`;
+        } else if (lowerResolved.endsWith('.mermaid') || lowerResolved.endsWith('.mmd')) {
+          content = `graph TD\n    A --> B`;
         }
         
         // Create the file directories
@@ -162,6 +188,8 @@ export class AppRoot extends LitElement {
         <!-- Column 3 slot -->
         <code-viewer slot="preview"></code-viewer>
       </workspace-layout>
+
+      <app-dialog id="global-dialog"></app-dialog>
     `;
   }
 }

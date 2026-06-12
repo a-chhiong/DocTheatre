@@ -3,7 +3,14 @@ import { debounceTime } from 'rxjs/operators';
 import { dbService } from './db.js';
 import JSZip from 'jszip';
 
-import { DEFAULT_YAML, USER_PATH_YAML, USER_SCHEMA_YAML, DEFAULT_MD } from './project-default.js';
+import { 
+  DEFAULT_YAML, 
+  USER_PATH_YAML, 
+  USER_SCHEMA_YAML, 
+  DEFAULT_MD,
+  DEFAULT_MERMAID,
+  DEFAULT_PLANTUML
+ } from './project-default.js';
 
 export class ProjectManager {
   constructor() {
@@ -146,6 +153,8 @@ paths: {}
         { projectKey: key, path: 'openapi/openapi.yaml', content: DEFAULT_YAML, type: 'file' },
         { projectKey: key, path: 'openapi/paths/users.yaml', content: USER_PATH_YAML, type: 'file' },
         { projectKey: key, path: 'openapi/components/schemas/user.yaml', content: USER_SCHEMA_YAML, type: 'file' },
+        { projectKey: key, path: 'template.mmd', content: DEFAULT_MERMAID, type: 'file' },
+        { projectKey: key, path: 'template.puml', content: DEFAULT_PLANTUML, type: 'file' },
         { projectKey: key, path: 'API - Description.md', content: DEFAULT_MD, type: 'file' }
       ];
     }
@@ -218,10 +227,8 @@ paths: {}
       if (remaining.length > 0) {
         await this.switchProject(remaining[0].key);
       } else {
-        const name = prompt('All projects have been deleted. You must create at least one project to continue.\n\nEnter project name:', 'My OpenStudio API');
-        const finalName = name ? name.trim() : 'Default Project';
-        const cleanStart = confirm('Would you like a clean start (blank project with a single openapi.yaml)?\n\nClick "OK" for a clean blank project.\nClick "Cancel" to initialize with the sample templates.');
-        await this.createNewProject(finalName, cleanStart);
+        // Automatically create a default project to continue seamlessly and avoid consecutive dialog blocks
+        await this.createNewProject('Default Project', false);
       }
     }
   }

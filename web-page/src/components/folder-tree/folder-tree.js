@@ -114,12 +114,28 @@ export class FolderTree extends LitElement {
       color: var(--text-secondary);
     }
 
-    .file-icon.yaml {
-      color: #e28743; /* warm orange for swagger */
+    .file-icon.md {
+      color: #475569; /* slate charcoal grey for markdown */
     }
 
-    .file-icon.md {
-      color: #3b82f6; /* calm blue for markdown */
+    .file-icon.puml {
+      color: #991039; /* deep crimson red for plantuml */
+    }
+
+    .file-icon.mermaid {
+      color: #16C5B7; /* vibrant teal for mermaid */
+    }
+
+    .file-icon.openapi {
+      color: #49cc90; /* swagger emerald green for openapi */
+    }
+
+    .file-icon.yaml {
+      color: #cb171e; /* yaml brand red for yaml */
+    }
+
+    .file-icon.json {
+      color: #dbaf09; /* vibrant amber/gold for json */
     }
 
     .row.active .file-icon {
@@ -158,6 +174,18 @@ export class FolderTree extends LitElement {
     this.subs.forEach(s => s.unsubscribe());
   }
 
+  // Promise Event Bridge to use global portal dialog instance safely 
+  _requestDialog(options) {
+    return new Promise((resolve) => {
+      const event = new CustomEvent('show-global-dialog', {
+        bubbles: true,
+        composed: true,
+        detail: { options, resolve }
+      });
+      this.dispatchEvent(event);
+    });
+  }
+
   toggleFolder(path) {
     const nextCollapsed = new Set(this.collapsedPaths);
     if (nextCollapsed.has(path)) {
@@ -177,16 +205,24 @@ export class FolderTree extends LitElement {
     this.projMenuOpen = false;
   }
 
-  // Create Operations
-  promptCreateFile(parentPath = '') {
-    const filename = prompt('Enter filename (e.g. user_profile.yaml or readme.md):');
+  // Async Create File Operations
+  async promptCreateFile(parentPath = '') {
+    const filename = await this._requestDialog({
+      title: 'Create New File',
+      message: 'Enter filename (e.g. user_profile.yaml, readme.md, diagram.puml, or flow.mmd):',
+      type: 'prompt'
+    });
+    
     if (!filename) return;
 
     const fullPath = parentPath ? `${parentPath}/${filename}` : filename;
     
-    // Check duplication
     if (this.files.some(f => f.path === fullPath)) {
-      alert('A file with this name already exists.');
+      await this._requestDialog({
+        title: 'Duplicate Target',
+        message: 'A file with this name already exists.',
+        type: 'alert'
+      });
       return;
     }
 
@@ -200,52 +236,78 @@ export class FolderTree extends LitElement {
     projectManager.createFile(fullPath, 'file', defaultContent);
   }
 
-  promptCreateFolder(parentPath = '') {
-    const foldername = prompt('Enter folder name:');
+  // Async Create Folder Operations
+  async promptCreateFolder(parentPath = '') {
+    const foldername = await this._requestDialog({
+      title: 'Create New Folder',
+      message: 'Enter folder name:',
+      type: 'prompt'
+    });
+    
     if (!foldername) return;
 
     const fullPath = parentPath ? `${parentPath}/${foldername}` : foldername;
     
     if (this.files.some(f => f.path === fullPath)) {
-      alert('A folder with this name already exists.');
+      await this._requestDialog({
+        title: 'Duplicate Target',
+        message: 'A folder with this name already exists.',
+        type: 'alert'
+      });
       return;
     }
 
     projectManager.createFile(fullPath, 'dir', '');
   }
 
-  // Delete & Rename Operations
-  handleDeleteNode(e, path, type) {
+  // Async Delete Operation
+  async handleDeleteNode(e, path, type) {
     e.stopPropagation();
-    const promptMsg = type === 'dir' 
+    const promptMsg = type === 'dir'
       ? `Delete folder "${path}" and all its contents?`
       : `Delete file "${path}"?`;
     
-    if (confirm(promptMsg)) {
+    const confirmed = await this._requestDialog({
+      title: type === 'dir' ? 'Delete Folder Warning' : 'Delete File Confirmation',
+      message: promptMsg,
+      type: 'confirm'
+    });
+
+    if (confirmed) {
       projectManager.deleteFile(path, type);
     }
   }
 
-  handleRenameNode(e, path, type) {
+  // Async Rename Operation
+  async handleRenameNode(e, path, type) {
     e.stopPropagation();
     const segments = path.split('/');
     const oldName = segments.pop();
     const parent = segments.join('/');
 
-    const newName = prompt(`Rename "${oldName}" to:`, oldName);
+    const newName = await this._requestDialog({
+      title: 'Rename Resource',
+      message: `Rename "${oldName}" to:`,
+      defaultValue: oldName,
+      type: 'prompt'
+    });
+
     if (!newName || newName === oldName) return;
 
     const newPath = parent ? `${parent}/${newName}` : newName;
 
-    // Check duplicate
     if (this.files.some(f => f.path === newPath)) {
-      alert('A file or folder with that name already exists.');
+      await this._requestDialog({
+        title: 'Resource Collision',
+        message: 'A file or folder with that name already exists.',
+        type: 'alert'
+      });
       return;
     }
 
     projectManager.renameFile(path, newPath, type);
   }
-
+  
   /**
    * Helper to build visual tree hierarchy from flat list
    */
@@ -308,12 +370,23 @@ export class FolderTree extends LitElement {
     const indentStyles = Array.from({ length: depth - 1 }).map(() => html`<div class="indent"></div>`);
     const isActive = this.activeFile && this.activeFile.path === node.path;
     
-    // File icon colors based on extension
+    // File icon colors based on extension & name
     let iconClass = 'file-icon';
-    if (node.name.endsWith('.yaml') || node.name.endsWith('.yml')) {
-      iconClass += ' yaml';
-    } else if (node.name.endsWith('.md')) {
+    const lowerName = node.name.toLowerCase();
+    const isSwagger = lowerName.includes('openapi') || lowerName.includes('swagger');
+
+    if (lowerName.endsWith('.md')) {
       iconClass += ' md';
+    } else if (lowerName.endsWith('.pu') || lowerName.endsWith('.puml') || lowerName.endsWith('.plantuml')) {
+      iconClass += ' puml';
+    } else if (lowerName.endsWith('.mmd') || lowerName.endsWith('.mermaid')) {
+      iconClass += ' mermaid';
+    } else if (isSwagger && (lowerName.endsWith('.yaml') || lowerName.endsWith('.yml') || lowerName.endsWith('.json'))) {
+      iconClass += ' openapi';
+    } else if (lowerName.endsWith('.yaml') || lowerName.endsWith('.yml')) {
+      iconClass += ' yaml';
+    } else if (lowerName.endsWith('.json')) {
+      iconClass += ' json';
     }
 
     return html`

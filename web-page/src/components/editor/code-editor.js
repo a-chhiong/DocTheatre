@@ -188,7 +188,7 @@ export class CodeEditor extends LitElement {
   createEditorState(content, path) {
     const isYaml = path.endsWith('.yaml') || path.endsWith('.yml');
     const isMd = path.endsWith('.md') || path.endsWith('.markdown');
-    const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml');
+    const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu');
     const isMermaid = path.endsWith('.mermaid') || path.endsWith('.mmd');
 
     const extensions = [
