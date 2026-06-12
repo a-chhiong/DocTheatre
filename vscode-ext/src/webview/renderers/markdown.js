@@ -74,6 +74,41 @@ export async function renderMarkdown(container, content, filePath, isDark) {
       }
     });
 
+    // ── Syntax highlight inline custom language code tags ──────────────────────
+    preview.querySelectorAll('code').forEach(block => {
+      if (block.parentElement && block.parentElement.tagName === 'PRE') { return; }
+
+      const text = block.textContent.trim();
+      if (text.startsWith('mermaid ')) {
+        const codeText = text.slice(8);
+        try {
+          const highlighted = hljs.highlight('mermaid', codeText).value;
+          block.innerHTML = `<span class="hljs-meta">mermaid</span> ${highlighted}`;
+          block.classList.add('hljs');
+        } catch (e) {
+          console.warn('[markdown] Failed to highlight inline mermaid:', e);
+        }
+      } else if (text.startsWith('plantuml ')) {
+        const codeText = text.slice(9);
+        try {
+          const highlighted = hljs.highlight('plantuml', codeText).value;
+          block.innerHTML = `<span class="hljs-meta">plantuml</span> ${highlighted}`;
+          block.classList.add('hljs');
+        } catch (e) {
+          console.warn('[markdown] Failed to highlight inline plantuml:', e);
+        }
+      } else if (text.startsWith('puml ')) {
+        const codeText = text.slice(5);
+        try {
+          const highlighted = hljs.highlight('plantuml', codeText).value;
+          block.innerHTML = `<span class="hljs-meta">puml</span> ${highlighted}`;
+          block.classList.add('hljs');
+        } catch (e) {
+          console.warn('[markdown] Failed to highlight inline puml:', e);
+        }
+      }
+    });
+
     // ── Render diagram fences ─────────────────────────────────────────────────
     await renderDiagrams(preview, isDark);
 

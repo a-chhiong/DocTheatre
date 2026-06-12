@@ -1,0 +1,7 @@
+sequenceDiagram
+  participant User
+  participant Editor
+  participant Previewer
+  User->>Editor: Type YAML/Markdown
+  Editor->>Previewer: Update State
+  Previewer->>User: Display live docs & diagrams

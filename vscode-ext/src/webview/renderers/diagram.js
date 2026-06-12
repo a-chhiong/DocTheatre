@@ -4,6 +4,7 @@
 // Theme is driven by the webview's own ☀/☾ toggle (not VS Code theme).
 
 import mermaid from 'mermaid';
+import hljs from 'highlight.js';
 
 // ── PlantUML global state ─────────────────────────────────────────────────────
 let pumlModule = null;
@@ -83,30 +84,51 @@ async function renderMermaidBlocks(container, isDark) {
   const blocks = container.querySelectorAll('pre > code.language-mermaid');
   if (!blocks.length) { return; }
 
-  const nodes = [];
-  blocks.forEach(code => {
-    const pre = code.parentElement;
-    if (pre.getAttribute('data-processed') === 'true') { return; }
-    const text = code.textContent.trim();
-    const div = document.createElement('div');
-    div.className = 'mermaid';
-    div.textContent = text;
-    pre.replaceWith(div);
-    nodes.push(div);
-  });
-
-  if (!nodes.length) { return; }
   try {
     mermaid.initialize({
       startOnLoad: false,
       theme: isDark ? 'dark' : 'default',
       securityLevel: 'loose',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
     });
-    await mermaid.run({ nodes });
-    nodes.forEach(n => n.setAttribute('data-processed', 'true'));
-  } catch (err) {
-    console.error('Mermaid render error:', err);
+  } catch (initErr) {
+    console.error('Mermaid initialization error:', initErr);
+  }
+
+  for (const code of blocks) {
+    const pre = code.parentElement;
+    if (!pre) { continue; }
+    if (pre.getAttribute('data-processed') === 'true') { continue; }
+
+    const text = code.textContent.trim();
+    const div = document.createElement('div');
+    div.className = 'mermaid';
+    div.textContent = text;
+    pre.replaceWith(div);
+    // NOTE: do NOT set data-processed here — mermaid.run() skips elements
+    // that already have it, causing a silent no-op on every block.
+
+    try {
+      await mermaid.run({ nodes: [div] });
+      div.setAttribute('data-processed', 'true'); // mark only on success
+    } catch (err) {
+      console.error('Mermaid render error for block:', err);
+      // Syntax error fallback: render an error banner + highlighted source code
+      let highlighted = text;
+      try {
+        highlighted = hljs.highlight('mermaid', text).value;
+      } catch (highlightErr) {
+        console.warn('Failed to syntax highlight failed mermaid block:', highlightErr);
+      }
+
+      div.innerHTML = `
+        <div class="mermaid-error-container" style="text-align: left; margin: 1rem 0;">
+          <div class="os-error" style="margin: 0 0 0.5rem 0;">⚠ Mermaid Render Error: ${err.message || err}</div>
+          <pre style="margin: 0; padding: 0.8rem; background: var(--os-bg-secondary); border: 1px solid var(--os-border); border-radius: 6px;"><code class="language-mermaid hljs">${highlighted}</code></pre>
+        </div>
+      `;
+      div.setAttribute('data-processed', 'true');
+    }
   }
 }
 
@@ -138,7 +160,14 @@ async function renderPlantumlBlocks(container, isDark) {
       await enqueuePuml(async () => {
         block.element.innerHTML = '';
         try {
-          const svg = await renderPumlToString(block.lines, isDark);
+          const linesToRender = [...block.lines];
+          const startIdx = linesToRender.findIndex(l => l.trim().startsWith('@start'));
+          if (startIdx >= 0) {
+            linesToRender.splice(startIdx + 1, 0, 'scale 1.0');
+          } else {
+            linesToRender.unshift('scale 1.0');
+          }
+          const svg = await renderPumlToString(linesToRender, isDark);
           block.element.innerHTML = svg;
         } catch (e) {
           block.element.innerHTML = errorHTML(e.message);

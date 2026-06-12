@@ -1,0 +1,12 @@
+{
+  "name": "openstudio-tools",
+  "version": "1.0.0",
+  "description": "Utility scripts for the OpenStudio project",
+  "main": "convert-svg-to-png.js",
+  "scripts": {
+    "convert-icon": "node convert-svg-to-png.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.4"
+  }
+}

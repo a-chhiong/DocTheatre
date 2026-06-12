@@ -7,7 +7,7 @@ import { renderMarkdown }   from './renderers/markdown.js';
 import { renderDiagrams }   from './renderers/diagram.js';
 import { renderSwagger }    from './renderers/swagger.js';
 import { attachZoom, detachZoom } from './zoom.js';
-import { FloatingAction }   from './floating-action.js';
+import { ExportAction }   from './export-action.js';
 import { handleExport, setContentType } from './export.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +36,7 @@ toolbar.className = 'os-toolbar';
 toolbar.innerHTML = `
   <span class="filename" id="os-filename">OpenStudio</span>
   <span class="badge"   id="os-badge"></span>
+  <span id="os-export-anchor"></span>
   <button class="os-toolbar-btn" id="os-theme-btn" title="Toggle light / dark theme">☀</button>
 `;
 root.appendChild(toolbar);
@@ -45,8 +46,8 @@ const previewArea = document.createElement('div');
 previewArea.className = 'os-preview';
 root.appendChild(previewArea);
 
-// Floating export button
-const fab = new FloatingAction(root, () => previewArea);
+// Export action button
+const exportAction = new ExportAction(document.getElementById('os-export-anchor'), () => previewArea);
 
 // Theme toggle
 const themeBtn = document.getElementById('os-theme-btn');
@@ -104,6 +105,13 @@ window.addEventListener('message', ({ data }) => {
   }
 });
 
+// ── Webview ready signal ─────────────────────────────────────────────────────
+// The extension host stores the initial document and waits for this signal
+// before sending the first 'update' message. This guarantees the message
+// listener above is registered before any content arrives — if we posted
+// immediately on HTML load, the async module script may not be ready yet.
+vscode.postMessage({ type: 'webview-ready' });
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Preview Router
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,10 +128,11 @@ async function updatePreview(filePath, content, contentType) {
 
   // Update export state
   setContentType(contentType);
-  fab.setContentType(contentType);
+  exportAction.setContentType(contentType);
 
-  // Detach zoom before replacing content
-  detachZoom(previewArea);
+  // Detach zoom from the inner diagram-preview div before replacing content
+  const prevDiagramView = previewArea.querySelector('.diagram-preview');
+  if (prevDiagramView) { detachZoom(prevDiagramView); }
   previewArea.innerHTML = '';
 
   switch (contentType) {
@@ -131,19 +140,33 @@ async function updatePreview(filePath, content, contentType) {
       await renderMarkdown(previewArea, content, filePath, _isDark);
       break;
 
-    case 'plantuml':
-    case 'mermaid': {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'diagram-preview';
-      previewArea.appendChild(wrapper);
+    case 'plantuml': {
+      const diagramView = document.createElement('div');
+      diagramView.className = 'diagram-preview plantuml-preview';
+      previewArea.appendChild(diagramView);
       const code = document.createElement('code');
-      code.className = `language-${contentType}`;
+      code.className = `language-plantuml`;
       code.textContent = content;
       const pre = document.createElement('pre');
       pre.appendChild(code);
-      wrapper.appendChild(pre);
-      await renderDiagrams(wrapper, _isDark);
-      attachZoom(previewArea);
+      diagramView.appendChild(pre);
+      await renderDiagrams(diagramView, _isDark);
+      attachZoom(diagramView);
+      break;
+    }
+
+    case 'mermaid': {
+      const diagramView = document.createElement('div');
+      diagramView.className = 'diagram-preview mermaid-preview standalone-mermaid';
+      previewArea.appendChild(diagramView);
+      const code = document.createElement('code');
+      code.className = `language-mermaid`;
+      code.textContent = content;
+      const pre = document.createElement('pre');
+      pre.appendChild(code);
+      diagramView.appendChild(pre);
+      await renderDiagrams(diagramView, _isDark);
+      attachZoom(diagramView);
       break;
     }
 

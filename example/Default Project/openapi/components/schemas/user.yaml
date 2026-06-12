@@ -1,0 +1,12 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique user identifier
+  username:
+    type: string
+    description: User's registration name
+  email:
+    type: string
+    format: email

@@ -1,0 +1,9 @@
+@startuml
+actor User
+boundary "OpenStudio" as Studio
+control "Project State" as State
+
+User -> Studio : Edit Files
+Studio -> State : Debounce Autosave
+State -> Studio : Update Live Preview
+@enduml
