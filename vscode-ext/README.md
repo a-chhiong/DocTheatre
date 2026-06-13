@@ -10,16 +10,16 @@
 
 ## ✨ Features
 
-- **Markdown (`.md`, `.markdown`)**: Rich GitHub-flavored markdown previewing with native support for inline Mermaid and PlantUML code blocks (` ```mermaid `).
+- **Markdown (`.md`, `.markdown`)**: Rich GitHub-flavored markdown previewing with native support for inline Mermaid and PlantUML code blocks (` ```mermaid `). Includes support for **file transclusions** via `@import "file.md"` and Obsidian-style `![[file.md]]`.
 - **Mermaid Diagrams (`.mmd`, `.mermaid`)**: First-class, offline standalone diagram generation.
 - **PlantUML Diagrams (`.puml`, `.pu`, `.plantuml`)**: Seamless rendering of architectural and workflow diagrams.
-- **OpenAPI / Swagger (`.yaml`, `.yml`, `.json`)**: Live interactive Swagger UI generated automatically when parsing OpenAPI specs, complete with deep-linking `$ref` navigation.
+- **OpenAPI / Swagger (`.yaml`, `.yml`, `.json`)**: Live interactive Swagger UI generated automatically when parsing OpenAPI specs. Supports **multi-file specs** by automatically resolving and inlining external `$ref` pointers.
 
 ### 🎨 Native Syntax Highlighting out-of-the-box
 No need to install third-party plugins. OpenStudio includes native **VS Code TextMate grammars** directly from the community's official Mermaid and PlantUML language repositories. 
 - You get rich, accurate syntax coloring for all your diagram files instantly.
 - Code blocks inside markdown (` ```plantuml `) are also syntax highlighted automatically.
-- `$ref` paths inside your `.yaml` and `.json` files become native clickable links that jump you right into the referenced file.
+- `$ref` paths inside your `.yaml` and `.json` files become native clickable links in the editor that jump you right into the referenced file.
 
 ### 🔍 Unrestricted Zoom & Pan
 Large sequence diagrams or complex flowcharts often get squished in preview panes. 
