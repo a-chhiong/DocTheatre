@@ -21,20 +21,19 @@
     <path d="M 256,256 L 843.78,1065.01 A 1000,1000 0 0,1 -331.78,1065.01 Z" fill="#3B82F6" />
     <path d="M 256,256 L -331.78,1065.01 A 1000,1000 0 0,1 -695.05,-53.01 Z" fill="#EF4444" />
     <path d="M 256,256 L -695.05,-53.01 A 1000,1000 0 0,1 256,-744 Z" fill="#F59E0B" />
-  </g>
 
-  <!-- Gap Lines (drawn over the slices to separate them) -->
-  <g stroke="#ffffff" stroke-width="6" stroke-linecap="round">
-    <line x1="256" y1="256" x2="256" y2="-744" />
-    <line x1="256" y1="256" x2="1207.05" y2="-53.01" />
-    <line x1="256" y1="256" x2="843.78" y2="1065.01" />
-    <line x1="256" y1="256" x2="-331.78" y2="1065.01" />
-    <line x1="256" y1="256" x2="-695.05" y2="-53.01" />
+    <!-- Gap Lines (drawn over the slices to separate them) -->
+    <g stroke="#ffffff" stroke-width="6" stroke-linecap="round">
+      <line x1="256" y1="256" x2="256" y2="-744" />
+      <line x1="256" y1="256" x2="1207.05" y2="-53.01" />
+      <line x1="256" y1="256" x2="843.78" y2="1065.01" />
+      <line x1="256" y1="256" x2="-331.78" y2="1065.01" />
+      <line x1="256" y1="256" x2="-695.05" y2="-53.01" />
+    </g>
   </g>
 
   <!-- Outer Squircle Border -->
-  <!-- Inset by 3px relative to clip-path so the 6px stroke perfectly touches the edge without being clipped -->
-  <rect x="9" y="9" width="494" height="494" rx="133" fill="none" stroke="#ffffff" stroke-width="6" />
+  <rect x="12" y="12" width="488" height="488" rx="130" fill="none" stroke="#ffffff" stroke-width="12" />
 
   <!-- Inner Rounded Pentagon (Scaled up by 20%) -->
   <g>

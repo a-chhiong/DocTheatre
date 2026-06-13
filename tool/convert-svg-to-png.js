@@ -2,8 +2,9 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
-const inputPath = path.join(__dirname, '../vscode-ext/media/icons/icon.svg');
-const outputPath = path.join(__dirname, '../vscode-ext/media/icons/icon.png');
+const inputPath = path.join(__dirname, '../icon/icon.svg');
+const outputPath1 = path.join(__dirname, '../vscode-ext/media/icons/icon.png');
+const outputPath2 = path.join(__dirname, '../web-page/public/icon.png');
 
 if (!fs.existsSync(inputPath)) {
     console.error(`Error: Could not find input file at ${inputPath}`);
@@ -11,18 +12,21 @@ if (!fs.existsSync(inputPath)) {
 }
 
 console.log('Reading SVG from:', inputPath);
-console.log('Writing PNG to:', outputPath);
 
-// The SVG has width/height 512, so sharp will natively render it at 512x512.
-sharp(inputPath)
-    .resize(1024, 1024)
-    .png()
-    .toFile(outputPath)
-    .then(info => {
-        console.log('✅ Successfully converted SVG to PNG!');
-        console.log(`Size: ${info.width}x${info.height} pixels`);
-        console.log(`File size: ${(info.size / 1024).toFixed(2)} KB`);
-    })
-    .catch(err => {
-        console.error('❌ Error converting SVG to PNG:', err);
-    });
+const outputPaths = [outputPath1, outputPath2];
+
+Promise.all(outputPaths.map(outputPath => {
+    console.log('Writing PNG to:', outputPath);
+    return sharp(inputPath)
+        .resize(1024, 1024)
+        .png()
+        .toFile(outputPath)
+        .then(info => {
+            console.log(`✅ Successfully saved to ${outputPath}`);
+            console.log(`   Size: ${info.width}x${info.height} pixels, ${(info.size / 1024).toFixed(2)} KB`);
+        });
+}))
+.catch(err => {
+    console.error('❌ Error converting SVG to PNG:', err);
+    process.exit(1);
+});
