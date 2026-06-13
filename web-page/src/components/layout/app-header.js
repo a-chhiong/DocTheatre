@@ -191,7 +191,7 @@ export class AppHeader extends LitElement {
     return html`
       <div class="brand">
         <div class="logo">
-          <img src="/icon.png" alt="Open-Studio Logo" />
+          <img src="${import.meta.env.BASE_URL}icon.png" alt="Open-Studio Logo" />
         </div>
         <div class="title">Open-Studio</div>
       </div>
