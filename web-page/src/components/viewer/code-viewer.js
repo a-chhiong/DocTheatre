@@ -796,7 +796,7 @@ export class CodeViewer extends LitElement {
   render() {
     return html`
       <div class="code-viewer-container" style="position: relative; height: 100%; width: 100%; overflow: hidden;">
-        <div id="previewer-target" style="height: 100%; overflow: hidden;"></div>
+        <div id="previewer-target" style="height: 100%; overflow: auto;"></div>
         
         ${this.activeFile ? html`
           <floating-action
