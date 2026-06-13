@@ -92,6 +92,65 @@ export class CodeEditor extends LitElement {
     .cm-ref-link:hover {
       filter: brightness(1.2);
     }
+
+    /* Unified Auto-hidden Scrollbar */
+    *::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: transparent;
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      border-radius: 6px;
+    }
+    *::-webkit-scrollbar-button:single-button {
+      background-color: transparent;
+      display: block;
+      height: 12px;
+      width: 12px;
+    }
+    
+    .editor-container:hover::-webkit-scrollbar-thumb,
+    .editor-container:hover *::-webkit-scrollbar-thumb {
+      background-color: rgba(120, 120, 120, 0.4);
+    }
+    .editor-container:hover::-webkit-scrollbar-thumb:hover,
+    .editor-container:hover *::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(120, 120, 120, 0.8);
+    }
+    
+    .editor-container:hover::-webkit-scrollbar-button:single-button:vertical:decrement,
+    .editor-container:hover *::-webkit-scrollbar-button:single-button:vertical:decrement {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='50,25 15,75 85,75'/></svg>");
+      background-size: 8px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .editor-container:hover::-webkit-scrollbar-button:single-button:vertical:increment,
+    .editor-container:hover *::-webkit-scrollbar-button:single-button:vertical:increment {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='15,25 85,25 50,75'/></svg>");
+      background-size: 8px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .editor-container:hover::-webkit-scrollbar-button:single-button:horizontal:decrement,
+    .editor-container:hover *::-webkit-scrollbar-button:single-button:horizontal:decrement {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='75,15 75,85 25,50'/></svg>");
+      background-size: 8px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .editor-container:hover::-webkit-scrollbar-button:single-button:horizontal:increment,
+    .editor-container:hover *::-webkit-scrollbar-button:single-button:horizontal:increment {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='25,15 25,85 75,50'/></svg>");
+      background-size: 8px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
   `;
 
   constructor() {

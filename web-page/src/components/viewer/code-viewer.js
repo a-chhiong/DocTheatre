@@ -25,7 +25,7 @@ export class CodeViewer extends LitElement {
     this.files = [];
     this.theme = 'light';
     this.currentContentType = ''; // Track what's being displayed
-    
+
     this.subs = [];
     this.swaggerInstance = null;
 
@@ -65,7 +65,7 @@ export class CodeViewer extends LitElement {
       if (link) {
         e.preventDefault();
         const refPath = link.getAttribute('data-href');
-        
+
         // Dispatch event to app shell to open this relative path
         this.dispatchEvent(new CustomEvent('open-ref-file', {
           detail: { refPath },
@@ -132,7 +132,7 @@ export class CodeViewer extends LitElement {
 
   getImportedContent(resolvedPath, originalPath, visited) {
     let importedFile = this.files.find(f => f.path === resolvedPath && f.type === 'file');
-    
+
     if (!importedFile) {
       const filename = originalPath.split('/').pop();
       importedFile = this.files.find(f => f.type === 'file' && (f.path === filename || f.path.endsWith('/' + filename)));
@@ -143,7 +143,7 @@ export class CodeViewer extends LitElement {
       if (ext === 'md' || ext === 'markdown') {
         return this.preprocessImports(importedFile.content, importedFile.path, visited);
       }
-      
+
       let lang = '';
       if (ext === 'puml' || ext === 'plantuml' || ext === 'pu') {
         lang = 'plantuml';
@@ -226,7 +226,7 @@ export class CodeViewer extends LitElement {
     try {
       const preprocessedText = this.preprocessImports(this.activeFile.content, this.activeFile.path);
       const htmlContent = marked.parse(preprocessedText || '');
-      
+
       container.innerHTML = `
         <div class="markdown-preview">
           ${htmlContent}
@@ -235,9 +235,9 @@ export class CodeViewer extends LitElement {
 
       // Run syntax highlighting on standard code blocks
       container.querySelectorAll('.markdown-preview pre code').forEach((block) => {
-        const isDiagram = block.classList.contains('language-mermaid') || 
-                          block.classList.contains('language-plantuml') || 
-                          block.classList.contains('language-puml');
+        const isDiagram = block.classList.contains('language-mermaid') ||
+          block.classList.contains('language-plantuml') ||
+          block.classList.contains('language-puml');
         if (!isDiagram) {
           hljs.highlightElement(block);
         }
@@ -298,21 +298,21 @@ export class CodeViewer extends LitElement {
    */
   renderSwaggerPreview(container) {
     let entrypoint = this.activeFile.path;
-    
+
     const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
-                            entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
-                            entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
-                            entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
-    
+      entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
+      entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
+      entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
+
     let resolvedResult = null;
 
     if (!isRootCandidate) {
-      const rootFile = this.files.find(f => 
-        f.type === 'file' && 
+      const rootFile = this.files.find(f =>
+        f.type === 'file' &&
         (f.path === 'openapi.yaml' || f.path.endsWith('/openapi.yaml') ||
-         f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
-         f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
-         f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
+          f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
+          f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
+          f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
       );
       if (rootFile) {
         const rootResult = resolverService.resolve(this.files, rootFile.path);
@@ -330,7 +330,7 @@ export class CodeViewer extends LitElement {
     }
 
     const { spec } = resolvedResult || {};
-    
+
     // Check if the resolved spec is a valid OpenAPI/Swagger specification
     const isValidSpec = spec && typeof spec === 'object' && (spec.openapi || spec.swagger || spec.paths);
 
@@ -370,7 +370,7 @@ export class CodeViewer extends LitElement {
 
       // Clone the SVG to avoid modifying the original
       const svgClone = svg.cloneNode(true);
-      
+
       // Set viewBox if not already set
       if (!svgClone.hasAttribute('viewBox')) {
         const bbox = svg.getBBox?.();
@@ -407,7 +407,7 @@ export class CodeViewer extends LitElement {
 
       // Create canvas from SVG
       const canvas = await this.svgToCanvas(svg);
-      
+
       canvas.toBlob((blob) => {
         this.downloadFile(blob, 'diagram.png');
       }, 'image/png');
@@ -423,25 +423,25 @@ export class CodeViewer extends LitElement {
   async svgToCanvas(svg) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     // Get dimensions
     const bbox = svg.getBBox?.() || { x: 0, y: 0, width: 800, height: 600 };
     const padding = 20;
     const width = bbox.width + padding * 2;
     const height = bbox.height + padding * 2;
-    
+
     canvas.width = width;
     canvas.height = height;
-    
+
     // Set white background
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, width, height);
-    
+
     // Create image from SVG
     const svgString = new XMLSerializer().serializeToString(svg);
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
-    
+
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -702,16 +702,16 @@ export class CodeViewer extends LitElement {
   exportSwaggerHTML(active) {
     let entrypoint = active.path;
     const isRootCandidate = entrypoint === 'openapi.yaml' || entrypoint.endsWith('/openapi.yaml') ||
-                            entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
-                            entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
-                            entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
+      entrypoint === 'swagger.yaml' || entrypoint.endsWith('/swagger.yaml') ||
+      entrypoint === 'openapi.json' || entrypoint.endsWith('/openapi.json') ||
+      entrypoint === 'swagger.json' || entrypoint.endsWith('/swagger.json');
     if (!isRootCandidate) {
-      const rootFile = this.files.find(f => 
-        f.type === 'file' && 
+      const rootFile = this.files.find(f =>
+        f.type === 'file' &&
         (f.path === 'openapi.yaml' || f.path.endsWith('/openapi.yaml') ||
-         f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
-         f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
-         f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
+          f.path === 'swagger.yaml' || f.path.endsWith('/swagger.yaml') ||
+          f.path === 'openapi.json' || f.path.endsWith('/openapi.json') ||
+          f.path === 'swagger.json' || f.path.endsWith('/swagger.json'))
       );
       if (rootFile) {
         entrypoint = rootFile.path;
@@ -732,7 +732,7 @@ export class CodeViewer extends LitElement {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>OpenStudio - Standalone Swagger Preview</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.8/swagger-ui.css" />
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css" />
   <style>
     body {
       margin: 0;
@@ -743,7 +743,7 @@ export class CodeViewer extends LitElement {
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.11.8/swagger-ui-bundle.js"><\/script>
+  <script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js"><\/script>
   <script>
     window.onload = () => {
       window.ui = SwaggerUIBundle({
@@ -794,19 +794,99 @@ export class CodeViewer extends LitElement {
   };
 
   render() {
+    const filename = this.activeFile ? this.activeFile.path.split('/').pop() : '';
     return html`
-      <div class="code-viewer-container" style="position: relative; height: 100%; width: 100%; overflow: hidden;">
-        <div id="previewer-target" style="height: 100%; overflow: auto;"></div>
+      <style>
+        @media print {
+          .code-viewer-container {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+          }
+          #previewer-target {
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+          }
+        }
         
+        /* Unified Auto-hidden Scrollbar */
+        #previewer-target::-webkit-scrollbar,
+        #previewer-target *::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        #previewer-target::-webkit-scrollbar-track,
+        #previewer-target *::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        #previewer-target::-webkit-scrollbar-thumb,
+        #previewer-target *::-webkit-scrollbar-thumb {
+          background: transparent;
+          border: 3px solid transparent;
+          background-clip: padding-box;
+          border-radius: 6px;
+        }
+        #previewer-target::-webkit-scrollbar-button:single-button,
+        #previewer-target *::-webkit-scrollbar-button:single-button {
+          background-color: transparent;
+          display: block;
+          height: 12px;
+          width: 12px;
+        }
+        
+        .code-viewer-container:hover #previewer-target::-webkit-scrollbar-thumb,
+        .code-viewer-container:hover #previewer-target *::-webkit-scrollbar-thumb {
+          background-color: rgba(120, 120, 120, 0.4);
+        }
+        .code-viewer-container:hover #previewer-target::-webkit-scrollbar-thumb:hover,
+        .code-viewer-container:hover #previewer-target *::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(120, 120, 120, 0.8);
+        }
+        
+        .code-viewer-container:hover #previewer-target::-webkit-scrollbar-button:single-button:vertical:decrement,
+        .code-viewer-container:hover #previewer-target *::-webkit-scrollbar-button:single-button:vertical:decrement {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='50,25 15,75 85,75'/></svg>");
+          background-size: 8px;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+        .code-viewer-container:hover #previewer-target::-webkit-scrollbar-button:single-button:vertical:increment,
+        .code-viewer-container:hover #previewer-target *::-webkit-scrollbar-button:single-button:vertical:increment {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='15,25 85,25 50,75'/></svg>");
+          background-size: 8px;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+        .code-viewer-container:hover #previewer-target::-webkit-scrollbar-button:single-button:horizontal:decrement,
+        .code-viewer-container:hover #previewer-target *::-webkit-scrollbar-button:single-button:horizontal:decrement {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='75,15 75,85 25,50'/></svg>");
+          background-size: 8px;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+        .code-viewer-container:hover #previewer-target::-webkit-scrollbar-button:single-button:horizontal:increment,
+        .code-viewer-container:hover #previewer-target *::-webkit-scrollbar-button:single-button:horizontal:increment {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23888'><polygon points='25,15 25,85 75,50'/></svg>");
+          background-size: 8px;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+      </style>
+      <div class="code-viewer-container" style="display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden;">
         ${this.activeFile ? html`
-          <floating-action
-            contentType="${this.currentContentType}"
+          <tool-bar
+            style="padding: 0 12px; width: auto;"
+            .filename=${filename}
+            .contentType=${this.currentContentType}
             @export-html=${this.handleExportHTML}
             @export-pdf=${this.handleExportPDF}
             @export-svg=${this.handleExportSVG}
             @export-png=${this.handleExportPNG}
-          ></floating-action>
+          ></tool-bar>
         ` : ''}
+        <div id="previewer-target" style="flex: 1; overflow: auto; position: relative;"></div>
       </div>
     `;
   }

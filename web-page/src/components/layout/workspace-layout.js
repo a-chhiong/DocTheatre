@@ -179,6 +179,31 @@ export class WorkspaceLayout extends LitElement {
       width: 16px;
       height: 16px;
     }
+
+    @media print {
+      .folder-tree-col,
+      .editor-col,
+      .splitter {
+        display: none !important;
+      }
+
+      .previewer-col {
+        grid-column: 1 / -1 !important;
+        border: none !important;
+        position: static !important;
+        width: 100% !important;
+      }
+
+      :host {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+
+      .workspace-placeholder {
+        display: none !important;
+      }
+    }
   `;
 
   constructor() {

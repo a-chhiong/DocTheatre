@@ -13,7 +13,7 @@ import './components/folder-tree/folder-tree.js';
 import './components/editor/tab-bar.js';
 import './components/editor/code-editor.js';
 import './components/viewer/code-viewer.js';
-import './components/viewer/floating-action.js'
+import './components/viewer/tool-bar.js';
 import './components/layout/menu-dropdown.js';
 import './components/layout/panel-toggles.js';
 import './components/common/app-dialog.js';
