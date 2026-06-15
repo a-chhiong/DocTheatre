@@ -97,9 +97,7 @@ html[data-theme="dark"] .swagger-ui {
 
 /* Optimize images and specific components in filtered Swagger UI */
 html[data-theme="dark"] .swagger-ui img,
-html[data-theme="dark"] .swagger-ui .microlight,
-html[data-theme="dark"] .swagger-ui pre,
-html[data-theme="dark"] .swagger-ui code {
+html[data-theme="dark"] .swagger-ui pre {
   filter: invert(1) hue-rotate(180deg);
 }
 
@@ -238,45 +236,92 @@ html[data-theme="dark"] .swagger-ui code {
 }
 
 /* ────────────────────────────────────────────────────────
-   HIGHLIGHT.JS DARK MODE THEME STYLE OVERRIDES
+   HIGHLIGHT.JS DARK MODE THEME STYLE OVERRIDES (Scoped to Markdown)
 ──────────────────────────────────────────────────────── */
-html[data-theme="dark"] .hljs {
+html[data-theme="dark"] .markdown-preview .hljs {
   color: var(--text-primary);
   background: var(--bg-primary);
 }
-html[data-theme="dark"] .hljs-keyword,
-html[data-theme="dark"] .hljs-selector-tag,
-html[data-theme="dark"] .hljs-title,
-html[data-theme="dark"] .hljs-section {
+html[data-theme="dark"] .markdown-preview .hljs-keyword,
+html[data-theme="dark"] .markdown-preview .hljs-selector-tag,
+html[data-theme="dark"] .markdown-preview .hljs-title,
+html[data-theme="dark"] .markdown-preview .hljs-section {
   color: #ff7b72; /* Salmon/red-orange key words */
 }
-html[data-theme="dark"] .hljs-string,
-html[data-theme="dark"] .hljs-meta,
-html[data-theme="dark"] .hljs-type,
-html[data-theme="dark"] .hljs-built_in,
-html[data-theme="dark"] .hljs-bullet {
+html[data-theme="dark"] .markdown-preview .hljs-string,
+html[data-theme="dark"] .markdown-preview .hljs-meta,
+html[data-theme="dark"] .markdown-preview .hljs-type,
+html[data-theme="dark"] .markdown-preview .hljs-built_in,
+html[data-theme="dark"] .markdown-preview .hljs-bullet {
   color: #79c0ff; /* Muted blue strings/types */
 }
-html[data-theme="dark"] .hljs-number,
-html[data-theme="dark"] .hljs-literal,
-html[data-theme="dark"] .hljs-variable,
-html[data-theme="dark"] .hljs-template-variable,
-html[data-theme="dark"] .hljs-tag {
+html[data-theme="dark"] .markdown-preview .hljs-number,
+html[data-theme="dark"] .markdown-preview .hljs-literal,
+html[data-theme="dark"] .markdown-preview .hljs-variable,
+html[data-theme="dark"] .markdown-preview .hljs-template-variable,
+html[data-theme="dark"] .markdown-preview .hljs-tag {
   color: #a5d6ff; /* Soft cyan numbers/tags */
 }
-html[data-theme="dark"] .hljs-comment,
-html[data-theme="dark"] .hljs-quote {
+html[data-theme="dark"] .markdown-preview .hljs-comment,
+html[data-theme="dark"] .markdown-preview .hljs-quote {
   color: #8b949e; /* Muted grey comments */
   font-style: italic;
 }
-html[data-theme="dark"] .hljs-attr,
-html[data-theme="dark"] .hljs-attribute,
-html[data-theme="dark"] .hljs-name {
+html[data-theme="dark"] .markdown-preview .hljs-attr,
+html[data-theme="dark"] .markdown-preview .hljs-attribute,
+html[data-theme="dark"] .markdown-preview .hljs-name {
   color: #7ee787; /* Light green attributes/properties */
 }
-html[data-theme="dark"] .hljs-emphasis {
+html[data-theme="dark"] .markdown-preview .hljs-emphasis {
   font-style: italic;
 }
-html[data-theme="dark"] .hljs-strong {
+html[data-theme="dark"] .markdown-preview .hljs-strong {
   font-weight: bold;
+}
+
+/* ────────────────────────────────────────────────────────
+   PREVENT GLOBAL HIGHLIGHT.JS FROM BLEEDING INTO SWAGGER UI
+──────────────────────────────────────────────────────── */
+.swagger-ui .hljs {
+  background: transparent;
+  color: inherit;
+}
+.swagger-ui .hljs-doctag,
+.swagger-ui .hljs-keyword,
+.swagger-ui .hljs-template-tag,
+.swagger-ui .hljs-template-variable,
+.swagger-ui .hljs-type,
+.swagger-ui .hljs-title,
+.swagger-ui .hljs-attr,
+.swagger-ui .hljs-attribute,
+.swagger-ui .hljs-literal,
+.swagger-ui .hljs-meta,
+.swagger-ui .hljs-number,
+.swagger-ui .hljs-operator,
+.swagger-ui .hljs-variable,
+.swagger-ui .hljs-selector-attr,
+.swagger-ui .hljs-selector-class,
+.swagger-ui .hljs-selector-id,
+.swagger-ui .hljs-regexp,
+.swagger-ui .hljs-string,
+.swagger-ui .hljs-built_in,
+.swagger-ui .hljs-symbol,
+.swagger-ui .hljs-comment,
+.swagger-ui .hljs-code,
+.swagger-ui .hljs-formula,
+.swagger-ui .hljs-name,
+.swagger-ui .hljs-quote,
+.swagger-ui .hljs-selector-tag,
+.swagger-ui .hljs-selector-pseudo,
+.swagger-ui .hljs-subst,
+.swagger-ui .hljs-section,
+.swagger-ui .hljs-bullet,
+.swagger-ui .hljs-emphasis,
+.swagger-ui .hljs-strong,
+.swagger-ui .hljs-addition,
+.swagger-ui .hljs-deletion {
+  color: inherit;
+  background-color: transparent;
+  font-weight: inherit;
+  font-style: inherit;
 }
