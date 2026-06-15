@@ -216,7 +216,14 @@ export class FolderTree extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.subs.push(projectManager.files$.subscribe(f => this.files = f));
+    this.subs.push(projectManager.files$.subscribe(f => {
+      this.files = f;
+      if (projectManager.collapseTreeNextSwitch) {
+        const dirs = f.filter(file => file.type === 'dir').map(file => file.path);
+        this.collapsedPaths = new Set(dirs);
+        projectManager.collapseTreeNextSwitch = false;
+      }
+    }));
     this.subs.push(projectManager.activeFile$.subscribe(af => this.activeFile = af));
     this.subs.push(projectManager.projects$.subscribe(p => this.projects = p));
     this.subs.push(projectManager.currentProjectKey$.subscribe(key => {

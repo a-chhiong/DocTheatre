@@ -1,27 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { projectManager } from '../../services/project-manager.js';
-
-// CodeMirror imports
-import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, lineNumbers, highlightActiveLineGutter, rectangularSelection, crosshairCursor } from "@codemirror/view";
-import { EditorState, Compartment } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap, indentWithTab, addCursorAbove, addCursorBelow } from "@codemirror/commands";
-import { yaml } from "@codemirror/lang-yaml";
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { syntaxHighlighting, bracketMatching, foldGutter, indentUnit } from "@codemirror/language";
-import { autocompletion } from "@codemirror/autocomplete";
-
-// OpenStudio highlight infrastructure (language modes, theme, styles, decorators)
-import {
-  plantumlSupport,
-  mermaidSupport,
-  codeLanguages,
-  specStudioEditorTheme,
-  specStudioHighlightStyle,
-  refLinkPlugin
-} from '../../utils/highlight-handler.js';
-
-// All highlight infrastructure (language modes, theme, styles, decorators)
-// has been extracted to high-light.js and imported above.
+import { EditorController } from './editor-controller.js';
 
 export class CodeEditor extends LitElement {
   static properties = {
@@ -160,202 +138,13 @@ export class CodeEditor extends LitElement {
     this.visibleLineNumbers = true;
     this.locked = true;
     
-    this.editorView = null;
-    this.subs = [];
-
-    // CodeMirror configuration compartments
-    this.themeCompartment = new Compartment();
-    this.lineNumbersCompartment = new Compartment();
-    this.langCompartment = new Compartment();
-    this.readOnlyCompartment = new Compartment();
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this.subs.push(projectManager.activeFile$.subscribe(af => {
-      const prevPath = this.activeFile ? this.activeFile.path : '';
-      this.activeFile = af;
-      
-      if (af && this.editorView) {
-        if (prevPath !== af.path) {
-          const state = this.createEditorState(af.content, af.path);
-          this.editorView.setState(state);
-        } else {
-          const currentDoc = this.editorView.state.doc.toString();
-          if (currentDoc !== af.content) {
-            this.editorView.dispatch({
-              changes: { from: 0, to: currentDoc.length, insert: af.content }
-            });
-          }
-        }
-      }
-    }));
-
-    this.subs.push(projectManager.theme$.subscribe(t => {
-      this.theme = t;
-      this.updateEditorTheme();
-    }));
-
-    this.subs.push(projectManager.lineNumbers$.subscribe(ln => {
-      this.visibleLineNumbers = ln;
-      this.updateEditorLineNumbers();
-    }));
-
-    this.subs.push(projectManager.locked$.subscribe(l => {
-      this.locked = l;
-      this.updateEditorReadOnly();
-    }));
-
-    this._resizeHandler = () => {
-      if (this.editorView) {
-        this.editorView.requestMeasure();
-      }
-    };
-    window.addEventListener('workspace-resize', this._resizeHandler);
-    window.addEventListener('resize', this._resizeHandler);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.subs.forEach(s => s.unsubscribe());
-    window.removeEventListener('workspace-resize', this._resizeHandler);
-    window.removeEventListener('resize', this._resizeHandler);
-    if (this.editorView) {
-      this.editorView.destroy();
-    }
+    // Instantiates EditorController
+    this.editorController = new EditorController(this);
   }
 
   firstUpdated() {
-    this.initializeEditor();
-  }
-
-  initializeEditor() {
     const container = this.shadowRoot.getElementById('editor');
-    if (!container) return;
-
-    const content = this.activeFile ? this.activeFile.content : '';
-    const path = this.activeFile ? this.activeFile.path : 'dummy.yaml';
-
-    const state = this.createEditorState(content, path);
-
-    this.editorView = new EditorView({
-      state,
-      parent: container
-    });
-  }
-
-  createEditorState(content, path) {
-    const isYaml = path.endsWith('.yaml') || path.endsWith('.yml');
-    const isMd = path.endsWith('.md') || path.endsWith('.markdown');
-    const isPuml = path.endsWith('.puml') || path.endsWith('.plantuml') || path.endsWith('.pu');
-    const isMermaid = path.endsWith('.mermaid') || path.endsWith('.mmd');
-
-    const extensions = [
-      history(),
-      drawSelection(),
-      dropCursor(),
-      EditorState.allowMultipleSelections.of(true),
-      rectangularSelection(),
-      crosshairCursor(),
-      highlightActiveLine(),
-      bracketMatching(),
-      autocompletion(),
-      indentUnit.of("    "),
-
-      // Custom workspace themes mapping to CSS tokens
-      specStudioEditorTheme,
-      syntaxHighlighting(specStudioHighlightStyle),
-
-      // Reference link visual decorator extension
-      refLinkPlugin,
-      
-      keymap.of([
-        ...defaultKeymap,
-        ...historyKeymap,
-        { key: "Alt-Cmd-ArrowUp", run: addCursorAbove },
-        { key: "Alt-Cmd-ArrowDown", run: addCursorBelow },
-        { key: "Ctrl-Alt-ArrowUp", run: addCursorAbove },
-        { key: "Ctrl-Alt-ArrowDown", run: addCursorBelow },
-        { key: "Shift-Alt-ArrowUp", run: addCursorAbove },
-        { key: "Shift-Alt-ArrowDown", run: addCursorBelow },
-        indentWithTab
-      ]),
-
-      // Theme toggle compartment
-      this.themeCompartment.of(EditorView.theme({}, { dark: this.theme === 'dark' })),
-
-      // Line numbers toggle compartment
-      this.lineNumbersCompartment.of(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []),
-
-      // Read-only toggle compartment
-      this.readOnlyCompartment.of(EditorView.editable.of(!this.locked)),
-
-      // Language mode detection
-      this.langCompartment.of(
-        isYaml ? yaml() :
-        (isMd ? markdown({ 
-          base: markdownLanguage,
-          codeLanguages 
-        }) :
-        (isPuml ? plantumlSupport :
-        (isMermaid ? mermaidSupport : [])))
-      ),
-
-      // Sync local updates to manager
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          const nextContent = update.state.doc.toString();
-          projectManager.updateActiveFileContent(nextContent);
-        }
-      }),
-
-      // Reference link click handler
-      EditorView.domEventHandlers({
-        click: (event, view) => {
-          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-          if (pos == null) return;
-          const line = view.state.doc.lineAt(pos);
-          
-          const match = line.text.match(/\$ref\s*:\s*['"]?([^'"]+)['"]?/);
-          if (match) {
-            const fullRef = match[1];
-            const [refPath] = fullRef.split('#');
-
-            this.dispatchEvent(new CustomEvent('open-ref-file', {
-              detail: { refPath },
-              bubbles: true,
-              composed: true
-            }));
-          }
-        }
-      })
-    ];
-
-    return EditorState.create({
-      doc: content,
-      extensions
-    });
-  }
-
-  updateEditorTheme() {
-    if (!this.editorView) return;
-    this.editorView.dispatch({
-      effects: this.themeCompartment.reconfigure(EditorView.theme({}, { dark: this.theme === 'dark' }))
-    });
-  }
-
-  updateEditorLineNumbers() {
-    if (!this.editorView) return;
-    this.editorView.dispatch({
-      effects: this.lineNumbersCompartment.reconfigure(this.visibleLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : [])
-    });
-  }
-
-  updateEditorReadOnly() {
-    if (!this.editorView) return;
-    this.editorView.dispatch({
-      effects: this.readOnlyCompartment.reconfigure(EditorView.editable.of(!this.locked))
-    });
+    this.editorController.initializeEditor(container);
   }
 
   render() {
@@ -370,4 +159,3 @@ export class CodeEditor extends LitElement {
 }
 
 customElements.define('code-editor', CodeEditor);
-

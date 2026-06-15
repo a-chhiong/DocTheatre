@@ -2,6 +2,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { dbService } from './db.js';
 import JSZip from 'jszip';
+import { routerService } from '../infra/router.js';
 
 import { 
   DEFAULT_YAML, 
@@ -22,6 +23,7 @@ export class ProjectManager {
     this.theme$ = new BehaviorSubject('light');
     this.lineNumbers$ = new BehaviorSubject(true);
     this.locked$ = new BehaviorSubject(true); // default locked per-project
+    this.collapseTreeNextSwitch = false; // flag to collapse folder tree on switch after import
 
     // Subject for autosave debounce
     this.autosaveSubject$ = new Subject();
@@ -61,14 +63,25 @@ export class ProjectManager {
     // Load projects list
     await this.refreshProjectList();
 
-    // Set initial project
-    const savedProjKey = localStorage.getItem('spec_studio_current_project');
+    // Initialize router and parse initial hash
+    routerService.init(this);
+    const { projectKey: urlProjKey, filePath: urlFilePath } = routerService.parseHash();
     const projects = this.projects$.value;
+    let targetProjKey = null;
 
-    if (savedProjKey && projects.some(p => p.key === savedProjKey)) {
-      await this.switchProject(savedProjKey);
+    if (urlProjKey && projects.some(p => p.key === urlProjKey)) {
+      targetProjKey = urlProjKey;
+    } else {
+      const savedProjKey = localStorage.getItem('spec_studio_current_project');
+      if (savedProjKey && projects.some(p => p.key === savedProjKey)) {
+        targetProjKey = savedProjKey;
+      }
+    }
+
+    if (targetProjKey) {
+      await this.switchProject(targetProjKey, urlFilePath);
     } else if (projects.length > 0) {
-      await this.switchProject(projects[0].key);
+      await this.switchProject(projects[0].key, urlFilePath);
     } else {
       // Create first default project
       await this.createNewProject('Default Project');
@@ -168,8 +181,9 @@ paths: {}
   /**
    * Switch active project
    * @param {string} key
+   * @param {string|null} targetFilePath
    */
-  async switchProject(key) {
+  async switchProject(key, targetFilePath = null) {
     localStorage.setItem('spec_studio_current_project', key);
     this.currentProjectKey$.next(key);
 
@@ -187,10 +201,18 @@ paths: {}
     const openTabs = (project.openTabs || []).filter(tab =>
       files.some(f => f.path === tab && f.type === 'file')
     );
+
+    // If targetFilePath is specified, ensure it is in openTabs and set as active
+    let activePath = targetFilePath || project.activeFile || openTabs[0] || '';
+    if (targetFilePath && files.some(f => f.path === targetFilePath && f.type === 'file')) {
+      if (!openTabs.includes(targetFilePath)) {
+        openTabs.push(targetFilePath);
+      }
+      activePath = targetFilePath;
+    }
     this.openTabs$.next(openTabs);
 
     // Load active file - must exist in files list
-    const activePath = project.activeFile || openTabs[0] || '';
     const activeFile = files.find(f => f.path === activePath && f.type === 'file');
 
     if (activeFile) {
@@ -576,6 +598,7 @@ paths: {}
     await dbService.saveProject(project);
     await dbService.saveFilesBulk(filesToSave);
     await this.refreshProjectList();
+    this.collapseTreeNextSwitch = true;
     await this.switchProject(projectKey);
   }
 
@@ -680,6 +703,7 @@ paths: {}
     await dbService.saveProject(project);
     await dbService.saveFilesBulk(filesToSave);
     await this.refreshProjectList();
+    this.collapseTreeNextSwitch = true;
     await this.switchProject(projectKey);
   }
 }

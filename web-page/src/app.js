@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { projectManager } from './services/project-manager.js';
-import { resolverService } from './services/resolver.js';
+import { resolverService } from './utils/spec-resolver.js';
 
 // Styles imports
 import './styles/main.css';
