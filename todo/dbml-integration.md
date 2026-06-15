@@ -98,3 +98,118 @@ By leveraging the existing `renderMarkdown` pipeline:
 - [ ] **Verify `index.dbml` Convention**
   - [ ] Open `auth.dbml` -> Verify preview only shows the Mermaid diagram (no dictionary tables). Exporting SVG works perfectly.
   - [ ] Open `index.dbml` -> Verify preview shows the full Markdown documentation (Diagram + Tables). Exporting PDF works perfectly.
+
+---
+
+## 3. Reference Examples
+
+To visualize how multi-file DBML works, how the files are structured, and what the resulting output is, reference the examples below.
+
+### 3.1 Project Folder Structure
+A typical multi-file DBML project in the workspace would align as follows:
+```
+my-database-project/
+├── index.dbml                 # Parent / Entry-point file (imports all other modules)
+└── schema/                   # Sub-folder hosting separate domain modules
+    ├── auth.dbml              # Child file: User accounts and roles
+    ├── billing.dbml           # Child file: Subscriptions and payments
+    └── projects.dbml          # Child file: Workspaces and projects
+```
+
+### 3.2 Child File: `schema/auth.dbml`
+```dbml
+// schema/auth.dbml
+Table users {
+  id integer [primary key]
+  username varchar
+  role user_role
+  created_at timestamp
+  Note: 'User accounts and roles'
+}
+
+Enum user_role {
+  admin
+  member
+}
+```
+
+### 3.3 Parent File: `index.dbml`
+```dbml
+// index.dbml
+Project OpenStudio_DB {
+  database_type: 'PostgreSQL'
+  Note: 'OpenStudio main database schema documentation'
+}
+
+// Import the auth schema module using the import-all syntax
+use * from './schema/auth'
+
+Table projects {
+  id integer [primary key]
+  name varchar
+  owner_id integer [ref: > users.id]
+  Note: 'User workspaces and projects'
+}
+
+TableGroup Authentication {
+  users
+}
+```
+
+### 3.4 Generated Markdown (when opening `index.dbml`)
+```markdown
+# Database Documentation
+
+## ER Diagrams
+
+### TableGroup: Authentication
+```mermaid
+erDiagram
+    users {
+        integer id PK
+        varchar username
+        user_role role
+        timestamp created_at
+    }
+```
+
+### Ungrouped Tables & Relations
+```mermaid
+erDiagram
+    projects {
+        integer id PK
+        varchar name
+        integer owner_id FK
+    }
+    users ||--o{ projects : "owner_id"
+```
+
+## Tables
+
+### `users`
+*Note: User accounts and roles*
+
+| Column | Type | Constraints | Note |
+| --- | --- | --- | --- |
+| `id` | integer | Primary Key | |
+| `username` | varchar | | |
+| `role` | user_role | | |
+| `created_at` | timestamp | | |
+
+### `projects`
+*Note: User workspaces and projects*
+
+| Column | Type | Constraints | Note |
+| --- | --- | --- | --- |
+| `id` | integer | Primary Key | |
+| `name` | varchar | | |
+| `owner_id` | integer | Foreign Key | References `users.id` |
+
+## Enums
+
+### `user_role`
+- `admin`
+- `member`
+```
+
+
