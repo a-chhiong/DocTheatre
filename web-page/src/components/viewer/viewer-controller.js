@@ -7,6 +7,7 @@ import SwaggerUI from 'swagger-ui-dist/swagger-ui-bundle.js';
 import hljs from 'highlight.js';
 import { Parser } from '@dbml/core';
 import { compileDbmlToMarkdown } from '../../utils/dbml-converter.js';
+import './dbml-viewer.js';
 
 export class ViewerController {
   constructor(host) {
@@ -281,71 +282,15 @@ export class ViewerController {
   }
 
   async renderDbmlPreview(container) {
-    try {
-      const parser = new Parser();
-      
-      // Register all virtual workspace files
-      for (const file of this.host.files) {
-        if (file.type === 'file') {
-          const absPath = file.path.startsWith('/') ? file.path : '/' + file.path;
-          parser.setDbmlSource(absPath, file.content || '');
-          
-          if (absPath.endsWith('.dbml')) {
-            const extensionless = absPath.slice(0, -5);
-            parser.setDbmlSource(extensionless, file.content || '');
-          }
-        }
-      }
- 
-      const activeFile = this.host.activeFile;
-      const activeAbsPath = activeFile.path.startsWith('/') ? activeFile.path : '/' + activeFile.path;
-      const filename = activeFile.path.split('/').pop();
- 
-      // Look for parent index.dbml in workspace
-      const parentFile = this.host.files.find(f => f.type === 'file' && f.path.toLowerCase().endsWith('index.dbml'));
-      let compilePath = activeAbsPath;
-      if (parentFile) {
-        compilePath = parentFile.path.startsWith('/') ? parentFile.path : '/' + parentFile.path;
-      }
- 
-      const database = parser.parseDbmlProject(compilePath);
-      const markdownContent = compileDbmlToMarkdown(database, filename, activeAbsPath);
-      const htmlContent = marked.parse(markdownContent || '');
- 
-      container.innerHTML = `
-        <div class="markdown-preview dbml-preview">
-          ${htmlContent}
-        </div>
-      `;
- 
-      container.querySelectorAll('.markdown-preview pre code').forEach((block) => {
-        const isDiagram = block.classList.contains('language-mermaid') ||
-          block.classList.contains('language-plantuml') ||
-          block.classList.contains('language-puml');
-        if (!isDiagram) {
-          hljs.highlightElement(block);
-        }
-      });
- 
-      this.showLoaderOverlay(container);
-      await new Promise(r => setTimeout(r, 10));
- 
-      const isDark = this.host.theme === 'dark';
-      await renderDiagrams(container.querySelector('.markdown-preview'), isDark);
-    } catch (err) {
-      console.error(err);
-      let errorMsg = err.message || 'Unknown error occurred';
-      if (err.diags && Array.isArray(err.diags)) {
-        errorMsg += '\n\nDiagnostics:\n' + err.diags.map(d => `Line ${d.location?.start?.line || '?'}: ${d.message}`).join('\n');
-      }
-      container.innerHTML = `
-        <div style="padding: 2rem; color: var(--color-error); font-family: monospace; white-space: pre-wrap;">
-          Error compiling DBML: ${errorMsg}
-        </div>
-      `;
-    } finally {
-      this.hideLoaderOverlay(container);
-    }
+    container.innerHTML = '';
+    const viewer = document.createElement('dbml-viewer');
+    viewer.activeFile = this.host.activeFile;
+    viewer.files = this.host.files;
+    viewer.theme = this.host.theme;
+    viewer.style.width = '100%';
+    viewer.style.height = '100%';
+    viewer.style.display = 'block';
+    container.appendChild(viewer);
   }
 
   async renderPlantumlPreview(container) {

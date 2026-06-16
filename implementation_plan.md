@@ -138,6 +138,32 @@ All format-specific rendering logic (parsing, compiling, rendering libraries) mo
 
 ---
 
+---
+
+## DBML Sidebar & Viewer Architecture
+
+Based on feedback, the physical `folder-tree` will remain strictly a file-system viewer. The domain-driven DBML abstract nodes (Schemas, TableGroups, Tables) will be relocated into a dedicated, collapsible sidebar **inside** the `dbml-viewer` itself.
+
+### 1. Revert Virtual Nodes from Folder Tree
+* Remove `virtualNodes$` subscription from `folder-tree.js` and `project-manager.js`.
+* The main workspace folder tree returns to displaying only physical files and folders.
+
+### 2. Dedicated DBML Sidebar Component
+To keep `dbml-viewer.js` clean, the sidebar logic will be extracted into a dedicated Lit component: `dbml-sidebar.js`.
+
+* **Component Separation**: `dbml-sidebar.js` will receive the parsed `@dbml/core` AST (`database`) as a property and handle its own internal state for collapsed folders and grouping modes. It will emit custom events (`node-click`) when the user clicks a table, which `dbml-viewer` will listen to for scrolling the main content.
+* **Layout Enhancements**: The mode switcher (Schemas vs Groups) will be moved to the *bottom* of the sidebar to maximize the vertical space available for the tree nodes.
+* **Hierarchical Grouping Modes**: 
+  1. **TableGroup Driven**: Flattens the hierarchy by ignoring Schemas. `TableGroup`s are displayed at the root level. Any tables that do not belong to a group, along with enums, are also displayed as standalone items at the root level alongside the groups.
+  2. **Schema Driven**: Strictly groups tables by their `Schema` (e.g., `public`, `ecommerce`), treating the schema like a folder and ignoring `TableGroup` definitions.
+  - The AST will be parsed natively inside `dbml-viewer.js` when a `.dbml` file is active and passed down to `dbml-sidebar.js`.
+
+### 3. DBML Viewer: Wiki & Diagram Views
+Instead of internal tabs taking up vertical space, the viewer will utilize the existing `<tool-bar>` for its view switcher:
+* **Toolbar View Switcher**: When a `.dbml` file is active, the `tool-bar` will render a toggle switch (Wiki vs Diagram). `code-viewer` will listen to this toggle and pass the selected `activeView` down to `dbml-viewer`.
+* **Wiki View**: Parses project-level notes and table/field notes from the DBML into a clean, markdown-rendered documentation page.
+* **Diagram View**: Renders the ER Diagram focusing on visual relationships, with color-coding for table groups.
+
 ## Verification Plan
 
 ### Automated Verification
