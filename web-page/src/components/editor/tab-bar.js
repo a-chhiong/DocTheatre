@@ -99,7 +99,7 @@ export class TabBar extends LitElement {
       align-items: center;
       height: 100%;
       background-color: var(--bg-secondary);
-      border-right: 1px solid var(--border-color);
+      border-left: 1px solid var(--border-color);
       gap: 4px;
     }
 
@@ -257,15 +257,6 @@ export class TabBar extends LitElement {
 
   render() {
     return html`
-      <div class="tab-bar-actions">
-        <button 
-          title="Toggle Line Numbers"
-          class="tab-bar-btn ${this.lineNumbers ? 'active' : ''}" 
-          @click=${this.handleLineNumbersToggle}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-        </button>
-      </div>
       <div class="tabs-container">
         ${this.tabs.length === 0 ? html`
           <div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">
@@ -294,6 +285,16 @@ export class TabBar extends LitElement {
         })}
       </div>
 
+      <div class="tab-bar-actions">
+        <button 
+          title="Toggle Line Numbers"
+          class="tab-bar-btn ${this.lineNumbers ? 'active' : ''}" 
+          @click=${this.handleLineNumbersToggle}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+      </div>
+      
       ${this.contextMenu ? html`
         <div 
           class="context-menu" 
