@@ -1,82 +1,90 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Markdown Mask -->
-    <mask id="md-mask-mono">
-      <rect fill="#fff" x="-1000" y="-1000" width="3000" height="3000" />
-      <path fill="#000" d="m 30,98 0,-68 20,0 20,25 20,-25 20,0 0,68 -20,0 0,-39 -20,25 -20,-25 0,39 z" />
-      <path fill="#000" d="m 155,98 -30,-33 20,0 0,-35 20,0 0,35 20,0 z" />
-    </mask>
+    <!-- UNIFIED THEME: Brighter Tiffany Green/Teal -->
+    <linearGradient id="themeDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14B8A6" /> <!-- Brighter Teal -->
+      <stop offset="100%" stop-color="#2DD4BF" /> <!-- Bright Tiffany/Cyan -->
+    </linearGradient>
 
-    <!-- Squircle Clip Path -->
-    <clipPath id="squircle-clip">
-      <!-- Shrunk slightly to leave 6px padding on all sides, avoiding viewBox cutoff -->
-      <rect x="6" y="6" width="500" height="500" rx="136" />
+    <!-- Document Body: Pure white -->
+    <linearGradient id="docGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+    
+    <!-- Folded Corner -->
+    <linearGradient id="foldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+
+    <!-- Spectrum Gradient: Blending all supported format colors -->
+    <linearGradient id="spectrumGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="20%" stop-color="#F97316" />
+      <stop offset="40%" stop-color="#EAB308" />
+      <stop offset="60%" stop-color="#4ADE80" />
+      <stop offset="80%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+
+    <clipPath id="docClip">
+      <path d="M 80 0 L 420 0 L 560 140 L 560 700 C 560 744.18 524.18 780 480 780 L 80 780 C 35.82 780 0 744.18 0 700 L 0 80 C 0 35.82 35.82 0 80 0 Z" />
     </clipPath>
+
+    <!-- Drop shadow -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#134E4A" flood-opacity="0.15" />
+    </filter>
+    
+    <filter id="foldShadow">
+      <feDropShadow dx="-6" dy="6" stdDeviation="6" flood-color="#134E4A" flood-opacity="0.1" />
+    </filter>
+
+    <filter id="playShadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#134E4A" flood-opacity="0.25" />
+    </filter>
   </defs>
 
-  <!-- The 5 Huge Pie Slices, clipped to the Squircle boundary -->
-  <g clip-path="url(#squircle-clip)">
-    <path d="M 256,256 L 256,-744 A 1000,1000 0 0,1 1207.05,-53.01 Z" fill="#EC4899" />
-    <path d="M 256,256 L 1207.05,-53.01 A 1000,1000 0 0,1 843.78,1065.01 Z" fill="#8B5CF6" />
-    <path d="M 256,256 L 843.78,1065.01 A 1000,1000 0 0,1 -331.78,1065.01 Z" fill="#3B82F6" />
-    <path d="M 256,256 L -331.78,1065.01 A 1000,1000 0 0,1 -695.05,-53.01 Z" fill="#EF4444" />
-    <path d="M 256,256 L -695.05,-53.01 A 1000,1000 0 0,1 256,-744 Z" fill="#F59E0B" />
+  <!-- Background App Icon Base -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="url(#themeDark)" />
 
-    <!-- Gap Lines (drawn over the slices to separate them) -->
-    <g stroke="#ffffff" stroke-width="6" stroke-linecap="round">
-      <line x1="256" y1="256" x2="256" y2="-744" />
-      <line x1="256" y1="256" x2="1207.05" y2="-53.01" />
-      <line x1="256" y1="256" x2="843.78" y2="1065.01" />
-      <line x1="256" y1="256" x2="-331.78" y2="1065.01" />
-      <line x1="256" y1="256" x2="-695.05" y2="-53.01" />
+  <g transform="translate(232, 122)">
+    <!-- Document Body -->
+    <path d="M 80 0 L 420 0 L 560 140 L 560 700 C 560 744.18 524.18 780 480 780 L 80 780 C 35.82 780 0 744.18 0 700 L 0 80 C 0 35.82 35.82 0 80 0 Z" fill="url(#docGrad)" filter="url(#shadow)" />
+    
+    <!-- Spectrum Stripes -->
+    <g clip-path="url(#docClip)">
+      <g transform="translate(0, 220) rotate(-45)">
+        <rect x="-300" y="0" width="1000" height="24" fill="url(#spectrumGrad)" />
+        <rect x="-300" y="44" width="1000" height="24" fill="url(#spectrumGrad)" />
+        <rect x="-300" y="88" width="1000" height="24" fill="url(#spectrumGrad)" />
+      </g>
     </g>
+
+    <!-- Play Button (Unified Dark Theme) -->
+    <path d="M 210 240 L 410 370 L 210 500 Z" fill="url(#themeDark)" stroke="url(#themeDark)" stroke-width="32" stroke-linejoin="round" filter="url(#playShadow)" />
+    
+    <!-- Code-style "random" horizontal lines to indicate documentation/code -->
+    <g fill="none" stroke="#14B8A6" stroke-width="14" stroke-linecap="round">
+      <!-- Line 1 -->
+      <path d="M 140 560 L 240 560" />
+      <path d="M 260 560 L 380 560" />
+      <!-- Line 2 -->
+      <path d="M 140 600 L 180 600" />
+      <path d="M 200 600 L 360 600" />
+      <path d="M 380 600 L 420 600" />
+      <!-- Line 3 (Indented) -->
+      <path d="M 180 640 L 280 640" />
+      <path d="M 300 640 L 360 640" />
+      <!-- Line 4 (Indented) -->
+      <path d="M 180 680 L 220 680" />
+      <path d="M 240 680 L 400 680" />
+      <!-- Line 5 -->
+      <path d="M 140 720 L 300 720" />
+    </g>
+
+    <!-- Folded Corner -->
+    <path d="M 420 0 L 420 120 C 420 131.05 428.95 140 440 140 L 560 140 Z" fill="url(#foldGrad)" filter="url(#foldShadow)" />
   </g>
-
-  <!-- Outer Squircle Border -->
-  <rect x="12" y="12" width="488" height="488" rx="130" fill="none" stroke="#ffffff" stroke-width="12" />
-
-  <!-- Inner Rounded Pentagon (Scaled up by 20%) -->
-  <g>
-    <!-- White Border Puff (Creates the gap illusion) -->
-    <polygon points="256,136 370.13,218.92 326.53,353.08 185.47,353.08 141.87,218.92" fill="#ffffff" stroke="#ffffff" stroke-width="42" stroke-linejoin="round" />
-    <!-- Green Fill Puff (The rounded shape itself) -->
-    <polygon points="256,136 370.13,218.92 326.53,353.08 185.47,353.08 141.87,218.92" fill="#85e92c" stroke="#85e92c" stroke-width="30" stroke-linejoin="round" />
-  </g>
-
-  <!-- T1 (Top Right): Mermaid Icon (Rotated +36 deg) -->
-  <g transform="translate(382.9, 81.2) rotate(36) translate(-36, -36)">
-    <svg x="0" y="0" width="72" height="72" viewBox="0 0 24 24">
-      <path fill="#ffffff" d="M23.99 2.115A12.223 12.223 0 0 0 12 10.149 12.223 12.223 0 0 0 .01 2.115a12.23 12.23 0 0 0 5.32 10.604 6.562 6.562 0 0 1 2.845 5.423v3.754h7.65v-3.754a6.561 6.561 0 0 1 2.844-5.423 12.223 12.223 0 0 0 5.32-10.604Z"/>
-    </svg>
-  </g>
-
-  <!-- T2 (Bottom Right): JSON Text (Aligned to curve tangent: -72 deg) -->
-  <g transform="translate(448.1, 318.4) rotate(-72)">
-    <text x="0" y="10" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif" font-weight="900" font-size="32" fill="#ffffff" text-anchor="middle" letter-spacing="1">JSON</text>
-  </g>
-
-  <!-- T3 (Bottom): Markdown Icon -->
-  <svg x="220" y="415" width="72" height="72" viewBox="0 0 208 128">
-    <rect width="100%" height="100%" ry="15" fill="#ffffff" mask="url(#md-mask-mono)" />
-  </svg>
-
-  <!-- T4 (Bottom Left): YAML Text (Aligned to curve tangent: 72 deg) -->
-  <g transform="translate(63.9, 318.4) rotate(72)">
-    <text x="0" y="10" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif" font-weight="900" font-size="32" fill="#ffffff" text-anchor="middle" letter-spacing="1">YAML</text>
-  </g>
-
-  <!-- T5 (Top Left): PlantUML Icon (Rotated -36 deg, Scaled) -->
-  <g transform="translate(129.1, 81.2) rotate(-36) scale(1.2) translate(-36, -36)">
-    <svg x="0" y="0" width="72" height="72" viewBox="0 0 72 72">
-      <path fill="#ffffff" fill-rule="evenodd" d="M 12 56 L 12 28 L 24 40 L 24 28 L 36 40 L 36 28 L 48 40 L 48 16 L 60 16 L 60 56 Z M 16 44 L 20 44 L 20 50 L 16 50 Z M 28 44 L 32 44 L 32 50 L 28 50 Z M 40 44 L 44 44 L 44 50 L 40 50 Z M 48 22 L 60 22 L 60 26 L 48 26 Z" />
-      <circle cx="55" cy="8" r="3.5" fill="#ffffff" />
-      <circle cx="48" cy="12" r="2" fill="#ffffff" />
-      <circle cx="61" cy="4" r="1.5" fill="#ffffff" />
-    </svg>
-  </g>
-
-  <!-- Center (Swagger, Scaled up by 20%) -->
-  <svg x="164" y="164" width="184" height="184" viewBox="0 0 32 32">
-    <path d="M11.161 7.823c-0.188-0.005-0.375 0-0.568 0.005-1.307 0.079-2.093 0.693-2.312 1.964-0.151 0.891-0.125 1.796-0.188 2.692-0.020 0.464-0.067 0.928-0.156 1.38-0.177 0.813-0.525 1.068-1.353 1.109-0.111 0.011-0.22 0.032-0.324 0.057v1.948c1.5 0.073 1.704 0.605 1.823 2.172 0.048 0.573-0.015 1.147 0.021 1.719 0.027 0.543 0.099 1.079 0.208 1.6 0.344 1.432 1.745 1.911 3.433 1.624v-1.713c-0.272 0-0.511 0.005-0.74 0-0.579-0.016-0.792-0.161-0.844-0.713-0.079-0.713-0.057-1.437-0.099-2.156-0.089-1.339-0.235-2.651-1.541-3.5 0.672-0.495 1.161-1.084 1.312-1.865 0.109-0.547 0.177-1.099 0.219-1.651s-0.025-1.12 0.021-1.667c0.077-0.885 0.135-1.249 1.197-1.213 0.161 0 0.317-0.021 0.495-0.036v-1.745c-0.213 0-0.411-0.005-0.604-0.011zM21.287 7.839c-0.365-0.011-0.729 0.016-1.089 0.079v1.697c0.329 0 0.584 0 0.833 0.005 0.439 0.005 0.772 0.177 0.813 0.661 0.041 0.443 0.041 0.891 0.083 1.339 0.089 0.896 0.136 1.796 0.292 2.677 0.136 0.724 0.636 1.265 1.255 1.713-1.088 0.729-1.411 1.776-1.463 2.953-0.032 0.801-0.052 1.615-0.093 2.427-0.037 0.74-0.297 0.979-1.043 0.995-0.208 0.011-0.411 0.027-0.64 0.041v1.74c0.432 0 0.833 0.027 1.235 0 1.239-0.073 1.995-0.677 2.239-1.885 0.104-0.661 0.167-1.333 0.183-2.005 0.041-0.615 0.036-1.235 0.099-1.844 0.093-0.953 0.532-1.349 1.484-1.411 0.089-0.011 0.177-0.032 0.267-0.057v-1.953c-0.161-0.021-0.271-0.037-0.391-0.041-0.713-0.032-1.068-0.272-1.251-0.948-0.109-0.433-0.177-0.876-0.197-1.324-0.052-0.823-0.047-1.656-0.099-2.479-0.109-1.588-1.063-2.339-2.516-2.38zM12.099 14.875c-1.432 0-1.536 2.109-0.115 2.245h0.079c0.609 0.036 1.131-0.427 1.167-1.037v-0.061c0.011-0.62-0.484-1.136-1.104-1.147zM15.979 14.875c-0.593-0.020-1.093 0.448-1.115 1.043 0 0.036 0 0.067 0.005 0.104 0 0.672 0.459 1.099 1.147 1.099 0.677 0 1.104-0.443 1.104-1.136-0.005-0.672-0.459-1.115-1.141-1.109zM19.927 14.875c-0.624-0.011-1.145 0.485-1.167 1.115 0 0.625 0.505 1.131 1.136 1.131h0.011c0.567 0.099 1.135-0.448 1.172-1.104 0.031-0.609-0.521-1.141-1.152-1.141z" fill="#ffffff" />
-  </svg>
 </svg>
