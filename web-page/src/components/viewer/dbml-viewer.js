@@ -299,7 +299,7 @@ export class DbmlViewer extends LitElement {
     } else {
       if (!this.database) return '';
       const filename = this.activeFile ? this.activeFile.path.split('/').pop() : 'schema.dbml';
-      const md = compileDbmlToMarkdown(this.database, filename, null, {
+      const md = compileDbmlToMarkdown(this.database, filename, this.activeEntityPath, {
         groupingMode: this.groupingMode,
         isExport: true
       });
@@ -310,15 +310,18 @@ export class DbmlViewer extends LitElement {
       tempDiv.innerHTML = htmlContent;
       
       tempDiv.querySelectorAll('pre code').forEach((block) => {
-        if (!block.classList.contains('language-mermaid')) {
+        if (block.classList.contains('language-mermaid')) {
+          const pre = block.parentElement;
+          const div = document.createElement('div');
+          div.className = 'mermaid';
+          div.textContent = block.textContent;
+          pre.parentNode.replaceChild(div, pre);
+        } else {
           hljs.highlightElement(block);
         }
       });
       
-      const isDark = this.theme === 'dark';
-      await renderDiagrams(tempDiv, isDark);
-      
-      return tempDiv.outerHTML;
+      return tempDiv.innerHTML;
     }
   }
 

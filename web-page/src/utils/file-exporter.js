@@ -1,3 +1,4 @@
+import variablesCss from '../styles/variables.css?raw';
 import markdownCss from '../styles/markdown.css?raw';
 import dbdocsCss from '../styles/dbdocs.css?raw';
 
@@ -18,16 +19,18 @@ function downloadFile(blob, filename) {
  * @param {Object} activeFile Active file object
  * @param {string} suffix Suffix to append (e.g. "-diagram.svg")
  */
-export function getExportFilename(projectName, activeFile, suffix) {
+export function getExportFilename(projectName, activeFile, suffix, scope = null) {
   const cleanProjName = (projectName || 'project').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   
-  const activeName = activeFile && activeFile.path 
-    ? activeFile.path.split('/').pop().replace(/\.[^/.]+$/, '') 
-    : '';
+  let baseName = '';
+  if (scope) {
+    baseName = scope.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  } else if (activeFile && activeFile.path) {
+    baseName = activeFile.path.split('/').pop().replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  }
     
-  if (activeName) {
-    const cleanActiveName = activeName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    return `${cleanProjName}_${cleanActiveName}${suffix}`;
+  if (baseName) {
+    return `${cleanProjName}_${baseName}${suffix}`;
   }
   return `${cleanProjName}${suffix}`;
 }
@@ -171,13 +174,13 @@ export const exporterService = {
   /**
    * Export Markdown content to standalone HTML
    */
-  exportMarkdownHTML(projectName, activeFile, renderedHtml) {
+  exportMarkdownHTML(projectName, activeFile, renderedHtml, scope = null) {
     if (!renderedHtml) {
       alert('Markdown preview content is empty.');
       return;
     }
 
-    const filename = getExportFilename(projectName, activeFile, '-preview.html');
+    const filename = getExportFilename(projectName, activeFile, '-preview.html', scope);
     const standaloneHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -188,6 +191,7 @@ export const exporterService = {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -202,14 +206,20 @@ export const exporterService = {
       margin: 0 auto;
       padding: 2.5rem 1.5rem;
     }
+    ${variablesCss}
     ${markdownCss}
     ${dbdocsCss}
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container markdown-preview dbml-preview">
     ${renderedHtml}
   </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    });
+  </script>
 </body>
 </html>`;
 
@@ -220,13 +230,13 @@ export const exporterService = {
   /**
    * Export Diagram content to standalone HTML
    */
-  exportDiagramHTML(projectName, activeFile, renderedHtml) {
+  exportDiagramHTML(projectName, activeFile, renderedHtml, scope = null) {
     if (!renderedHtml) {
       alert('Diagram preview content is empty.');
       return;
     }
 
-    const filename = getExportFilename(projectName, activeFile, '-diagram.html');
+    const filename = getExportFilename(projectName, activeFile, '-diagram.html', scope);
     const standaloneHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -287,13 +297,13 @@ export const exporterService = {
   /**
    * Export Swagger/OpenAPI spec to standalone HTML
    */
-  exportSwaggerHTML(projectName, activeFile, spec) {
+  exportSwaggerHTML(projectName, activeFile, spec, scope = null) {
     if (!spec) {
       alert('Could not resolve spec to export.');
       return;
     }
 
-    const filename = getExportFilename(projectName, activeFile, '-preview.html');
+    const filename = getExportFilename(projectName, activeFile, '-preview.html', scope);
     const sanitizedSpec = sanitizeSpec(JSON.parse(JSON.stringify(spec)));
 
     const standaloneHtml = `<!DOCTYPE html>
@@ -388,5 +398,25 @@ export const exporterService = {
         }, 30000);
       }, 100);
     });
+  },
+
+  /**
+   * Export Document / DBML to PDF
+   * (Currently triggers the browser's native print-to-PDF functionality)
+   */
+  exportDocumentPDF(projectName, activeFile, scope = null) {
+    const filename = getExportFilename(projectName, activeFile, '-preview.pdf', scope);
+    // Since window.print() uses the document title as the default PDF filename
+    // we temporarily change the title to our desired filename
+    const originalTitle = document.title;
+    document.title = filename.replace(/\.pdf$/i, '');
+    
+    // Trigger native print dialog (which allows Save as PDF)
+    window.print();
+    
+    // Restore original title after a short delay to ensure print dialog caught it
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   }
 };

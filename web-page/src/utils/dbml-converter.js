@@ -1,3 +1,5 @@
+import { marked } from 'marked';
+
 /**
  * Helper to clean database type names for Mermaid schema validation
  */
@@ -111,12 +113,7 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
   let enums = [];
   let tableGroups = [];
   
-  if (isExport) {
-    tables = allTables;
-    enums = allEnums;
-    tableGroups = allTableGroups;
-  } else {
-    if (!activeNodePath) {
+  if (!activeNodePath) {
       // Root View: Show full document (TOC + all tables/enums)
       tables = allTables;
       enums = allEnums;
@@ -153,8 +150,6 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
       const eName = parts.slice(2).join('-');
       enums = allEnums.filter(e => e.name === eName && e.schemaName === sName);
     }
-  }
-
   // Local helper to check if a column is a foreign key
   const isForeignKey = (schemaName, tableName, columnName) => {
     return refs.some(ref =>
@@ -230,7 +225,7 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
   let md = '';
 
   // --- Project Header (Show only on root project overview or export) ---
-  if (!activeNodePath || isExport) {
+  if (!activeNodePath) {
     md += `<div class="dbml-project-header">\n`;
     md += `  <h1 class="dbml-project-title">${projName}</h1>\n`;
     if (dbType) {
@@ -238,40 +233,15 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
     }
     if (projNote) {
       // Render project note as markdown (supports headings, bullets, bold)
-      md += `  <div class="dbml-project-note">\n\n${projNote}\n\n</div>\n`;
+      md += `  <div class="dbdocs-note">\n\n${projNote}\n\n  </div>\n`;
     }
     md += `</div>\n\n---\n\n`;
   }
 
-  // ── Single-table view: two titled ERD blocks (same in Schema and Groups mode) ──────────────
-  const isSingleTableView = !isExport && activeNodePath && activeNodePath.startsWith('table-') && tables.length >= 1;
-
-  if (isSingleTableView) {
-    const targetTable = tables[0];
-
-    // ERD 1: The table itself — fields and PK/FK markers, no relationship lines
-    md += '#### ER Diagram\n\n';
-    let singleTableMermaid = 'erDiagram\n';
-    singleTableMermaid += `    ${mermaidEntityLabel(targetTable.schemaName, targetTable.name)} {\n`;
-    for (const field of targetTable.fields) {
-      const typeName = cleanMermaidType(field.type.type_name);
-      const pkAttr = field.pk ? ' PK' : '';
-      const fkAttr = isForeignKey(targetTable.schemaName, targetTable.name, field.name) ? ' FK' : '';
-      singleTableMermaid += `        ${typeName} ${field.name}${pkAttr}${fkAttr}\n`;
-    }
-    singleTableMermaid += '    }';
-    md += '```mermaid\n' + singleTableMermaid + '\n```\n\n---\n\n';
-
-    // ERD 2: Related Tables — target table + all FK neighbours with relationship lines
-    const neighbourMermaid = compileDbmlToMermaid(database, activeNodePath, groupingMode);
-    const hasRelationships = neighbourMermaid && neighbourMermaid.includes('||');
-    if (hasRelationships) {
-      md += '#### Related Tables\n\n';
-      md += '```mermaid\n' + neighbourMermaid + '\n```\n\n---\n\n';
-    }
-
+  // ── Overview ─────────────────────────────────────────────────────────
+  if (activeNodePath && (activeNodePath.startsWith('table-') || activeNodePath.startsWith('enum-'))) {
+    // Single view: skip overview TOC and global ERDs entirely. ERDs are rendered individually below.
   } else {
-    // ── Overview (schema or group selected, or export) ────────────────────────────────────────
     if (groupingMode === 'schema') {
       const uniqueSchemas = [...new Set(tables.map(t => t.schemaName || 'public'))];
       if (uniqueSchemas.length > 0) {
@@ -315,7 +285,7 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
               const fkAttr = isForeignKey(table.schemaName, table.name, field.name) ? ' FK' : '';
               md += `        ${typeName} ${field.name}${pkAttr}${fkAttr}\n`;
             }
-            md += '    }\n\n';
+            md += `    }\n\n`;
           }
 
           for (const ref of refs) {
@@ -352,6 +322,10 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
         const anchor = 'tablegroup-' + group.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         md += `<div id="${anchor}">\n\n`;
         md += `### TableGroup: ${group.name}\n\n`;
+
+        if (group.note) {
+          md += `<div class="dbdocs-note">\n\n${group.note}\n\n</div>\n\n`;
+        }
 
         const groupTables = group.tables || [];
         const groupTableNames = groupTables.map(gt => gt.tableName || gt.name);
@@ -394,7 +368,7 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
               const fkAttr = isForeignKey(table.schemaName, table.name, field.name) ? ' FK' : '';
               md += `        ${typeName} ${field.name}${pkAttr}${fkAttr}\n`;
             }
-            md += '    }\n\n';
+            md += `    }\n\n`;
           }
         }
 
@@ -413,11 +387,25 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
         md += '</div>\n\n---\n\n';
       }
     }
+
   }
 
   // --- Data Dictionary ---
   if (tables.length > 0) {
+    if (activeNodePath && activeNodePath.startsWith('table-')) {
+      const targetTable = tables[0];
+      const sName = targetTable.schemaName || 'public';
+      
+      md += `### Table: ${targetTable.name}\n\n`;
+
+      const singleTableMermaid = compileDbmlToMermaid(database, `table-${sName}-${targetTable.name}`, groupingMode);
+      if (singleTableMermaid) {
+        md += '```mermaid\n' + singleTableMermaid + '\n```\n\n';
+      }
+    }
+    
     md += '## Data Dictionary\n\n';
+
     for (const table of tables) {
       const sName = table.schemaName || 'public';
       const schemaColor = getSchemaColor(sName);
@@ -449,16 +437,28 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
 
       // Table note (rendered as markdown)
       if (table.note) {
-        md += `<div class="dbdocs-table-note">\n\n${table.note}\n\n</div>\n\n`;
+        md += `<div class="dbdocs-note">\n\n${table.note}\n\n</div>\n\n`;
       }
 
       // === Columns (restructured: Name, Type, Settings, References, Notes) ===
       md += `<details class="table-section columns-section" open>\n`;
-      md += `  <summary>Fields <span class="section-count">(${table.fields.length})</span></summary>\n\n`;
-      md += `<div class="dbdocs-column-list">\n`;
-      md += `  <div class="dbdocs-column-header-row">\n`;
-      md += `    <div>Name</div><div>Type</div><div>Settings</div><div>References</div>\n`;
-      md += `  </div>\n`;
+      md += `<summary>Fields <span class="section-count">(${table.fields.length})</span></summary>\n\n`;
+      md += `<div class="dui-table-content">\n`;
+      md += `<div class="dui-table-wrapper-outer">\n`;
+      md += `<div class="dui-table-wrapper">\n`;
+      md += `<table class="dbdocs-table">\n`;
+      md += `<thead class="dui-table-header">\n`;
+      md += `<tr>\n`;
+      md += `<th style="width: 25%;"><div class="!p-3 font-semibold capitalize text-cpt-main-text">Name</div></th>\n`;
+      md += `<th style="width: 15%;"><div class="!p-3 font-semibold capitalize text-cpt-main-text">Type</div></th>\n`;
+      md += `<th style="width: 15%;"><div class="!p-3 font-semibold capitalize text-cpt-main-text">Settings</div></th>\n`;
+      md += `<th style="width: 25%;"><div class="!p-3 font-semibold capitalize text-cpt-main-text">References</div></th>\n`;
+      md += `<th style="width: 12%;"><div class="!p-3 font-semibold capitalize text-cpt-main-text">Default</div></th>\n`;
+      md += `<th style="width: 8%;"><div class="!p-3 font-semibold capitalize text-cpt-main-text">Note</div></th>\n`;
+      md += `</tr>\n`;
+      md += `</thead>\n`;
+      md += `<tbody>\n`;
+
       for (const field of table.fields) {
         const fkInfo = getForeignKeyRef(sName, table.name, field.name);
         
@@ -466,7 +466,7 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
 
         const isEnum = enumNames.has(field.type.type_name);
         const typeHtml = isEnum
-          ? `<span class="col-type">${field.type.type_name}</span> <span class="dbdocs-badge dbdocs-badge-enum">E</span>`
+          ? `<span style="white-space: nowrap;"><span class="dbdocs-badge dbdocs-badge-enum">E</span><span class="col-type">${field.type.type_name}</span></span>`
           : `<span class="col-type">${field.type.type_name}</span>`;
 
         const settings = [];
@@ -479,7 +479,8 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
         let refHtml = '';
         if (fkInfo) {
           const targetId = `table-${fkInfo.targetSchema}-${fkInfo.targetTable}`;
-          refHtml = `<a href="#${targetId}" class="fk-link"><span class="fk-arrow">→</span> ${fkInfo.targetTable}.${fkInfo.targetColumn}</a>`;
+          const linkText = `${fkInfo.targetTable}.${fkInfo.targetColumn}`;
+          refHtml = `<div class="col-ref-item" title="${linkText}"><a href="#${targetId}" class="fk-link"><span class="fk-arrow">→</span> ${linkText}</a></div>`;
         }
         const incomingRefs = refs.filter(ref => {
           const targetEp = ref.endpoints.find(ep => 
@@ -493,32 +494,40 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
             const sourceEp = ref.endpoints.find(ep => ep.relation === '*');
             if (!sourceEp) return '';
             const sourceId = `table-${sourceEp.schemaName || 'public'}-${sourceEp.tableName}`;
-            return `<a href="#${sourceId}" class="fk-link fk-link-incoming"><span class="fk-arrow">←</span> ${sourceEp.tableName}.${sourceEp.fieldNames[0]}</a>`;
+            const linkText = `${sourceEp.tableName}.${sourceEp.fieldNames[0]}`;
+            return `<div class="col-ref-item" title="${linkText}"><a href="#${sourceId}" class="fk-link fk-link-incoming"><span class="fk-arrow">←</span> ${linkText}</a></div>`;
           }).filter(Boolean);
-          if (refHtml) refHtml += '<br>';
-          refHtml += incoming.join('<br>');
+          refHtml += incoming.join('');
         }
         const finalRefHtml = refHtml ? `<div class="col-refs">${refHtml}</div>` : '';
 
-        let notesParts = [];
+        let defaultHtml = '';
         if (field.dbdefault) {
-          notesParts.push(`<span class="dbdocs-badge dbdocs-badge-default">default: <code>${field.dbdefault.value}</code></span>`);
+          defaultHtml = `<span class="dbdocs-badge dbdocs-badge-default"><code>${field.dbdefault.value}</code></span>`;
         }
-        if (field.note) {
-          notesParts.push(`<span class="field-note-text">${field.note}</span>`);
-        }
-        const notesStr = notesParts.join(' ');
 
-        md += `  <div class="dbdocs-column-row">\n`;
-        md += `    <div>${nameHtml}</div>\n`;
-        md += `    <div>${typeHtml}</div>\n`;
-        md += `    <div>${settingsStr}</div>\n`;
-        md += `    <div>${finalRefHtml}</div>\n`;
-        if (notesStr) {
-          md += `    <div class="dbdocs-column-note">${notesStr}</div>\n`;
+        let noteHtml = '';
+        if (field.note) {
+          const modalId = `modal-${sName}-${table.name}-${field.name}`.replace(/[^a-zA-Z0-9-]/g, '-');
+          const mdIcon = `<svg class="dbdocs-note-icon" aria-hidden="true" focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><path fill="currentColor" d="M593.8 59.1H46.2C20.7 59.1 0 79.8 0 105.2v301.5c0 25.5 20.7 46.2 46.2 46.2h547.7c25.5 0 46.2-20.7 46.1-46.1V105.2c0-25.4-20.7-46.1-46.2-46.1zM338.5 360.6H277v-120l-61.5 76.9-61.5-76.9v120H92.3V151.4h61.5l61.5 76.9 61.5-76.9h61.5v209.2zm135.3 3.1L381.5 256H443V151.4h61.5V256H566z"></path></svg>`;
+          
+          const compiledNote = marked.parse(field.note).replace(/\n/g, ' ');
+
+          let rawNoteHtml = `<button class="dbdocs-note-icon-btn" title="View Note" onclick="document.getElementById('${modalId}').showModal()">${mdIcon}</button>`;
+          rawNoteHtml += `<dialog id="${modalId}" class="dbdocs-modal" onclick="if(event.target===this)this.close()">`;
+          rawNoteHtml += `<div class="dbdocs-modal-header"><h4>Note: ${field.name}</h4><button class="dbdocs-modal-close" onclick="this.closest('dialog').close()">&times;</button></div>`;
+          rawNoteHtml += `<div class="dbdocs-modal-body">${compiledNote}</div></dialog>`;
+          
+          noteHtml = rawNoteHtml;
         }
-        md += `  </div>\n`;
+
+        const rowHtml = `<tr class="dui-table-row hover:bg-grey-lighten-20"><td><div>${nameHtml}</div></td><td><div>${typeHtml}</div></td><td><div>${settingsStr}</div></td><td><div>${finalRefHtml}</div></td><td><div>${defaultHtml}</div></td><td><div>${noteHtml}</div></td></tr>`;
+        md += rowHtml.replace(/\n/g, ' ') + '\n';
       }
+      md += `</tbody>\n`;
+      md += `</table>\n`;
+      md += `</div>\n`;
+      md += `</div>\n`;
       md += `</div>\n`;
       md += `\n</details>\n\n`;
 
@@ -554,10 +563,25 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
 
   // --- Enums ---
   if (enums.length > 0) {
-    if (tables.length > 0) {
-      md += '---\n\n';
+    if (activeNodePath && activeNodePath.startsWith('enum-')) {
+      const targetEnum = enums[0];
+      md += `### Enum: ${targetEnum.name}\n\n`;
+
+      let enumMermaid = 'classDiagram\n';
+      enumMermaid += `  class ${targetEnum.name} {\n`;
+      enumMermaid += `    <<enumeration>>\n`;
+      const values = targetEnum.values || [];
+      for (const val of values) {
+        enumMermaid += `    ${val.name}\n`;
+      }
+      enumMermaid += `  }\n`;
+      md += '```mermaid\n' + enumMermaid + '```\n\n';
+      md += '## Data Dictionary\n\n';
+    } else if (tables.length === 0) {
+      // If there are enums but NO tables, the "Data Dictionary" header was never printed.
+      md += '## Data Dictionary\n\n';
     }
-    md += '## Enums\n\n';
+
     for (const en of enums) {
       const eSchema = en.schemaName || 'public';
       const schemaColor = getSchemaColor(eSchema);
@@ -569,8 +593,9 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
       md += `    <span class="dbdocs-badge dbdocs-badge-enum" style="margin-left: 8px">ENUM</span>\n`;
       md += `  </div>\n`;
       md += `</div>\n\n`;
+
       if (en.note) {
-        md += `<div class="dbdocs-table-note">\n\n${en.note}\n\n</div>\n\n`;
+        md += `<div class="dbdocs-note">\n\n${en.note}\n\n</div>\n\n`;
       }
       const enumHeaders = ['Value', 'Note'];
       const enumRows = [];

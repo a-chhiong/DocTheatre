@@ -149,6 +149,16 @@ Table core.users {
   Note: '''
   The users table stores information about each user registered on the platform. It includes personal details, authentication credentials, and metadata about account creation and activity.
   '''
+
+  // NOTE: The "records" syntax is an official DBML feature.
+  // However, the upstream @dbml/core parser currently throws a SyntaxError 
+  // when parsing it. Once supported by @dbml/core, you can define sample data:
+  /*
+  records {
+    1, 'Alice', 'alice@example.com', 'alice_1', 'hash123', '555-0101', '2026-06-22', 'http://example.com/a.png', '2026-01-01', 1
+    2, 'Bob', 'bob@example.com', 'bob_2', 'hash456', '555-0102', '2026-06-20', 'http://example.com/b.png', '2026-01-02', 1
+  }
+  */
 }
 
 Table core.order_items {
@@ -156,7 +166,7 @@ Table core.order_items {
   order_id int [not null, note: 'Id of the order']
   product_id int [not null, note: 'Id of the product in the order item']
   product_name varchar [note: 'Name of the product in the order item']
-  quantity int [note: 'Default: 1  Quantity of the item']
+  quantity int [default: 1, note: 'Quantity of the item']
   status orders_status
   price decimal [note: 'Price of the order item']
   image_url varchar [note: 'URL of the product image in the order item']
@@ -169,7 +179,7 @@ Table core.order_items {
 Table core.orders {
   id int [pk, note: 'Id of the order']
   user_id int [not null, unique]
-  status orders_status [note: 'Status of the order:  pending processing shipped canceled']
+  status orders_status [default: 'pending', note: 'Status of the order:  pending processing shipped canceled']
   created_at varchar [note: 'When order created']
   total_price decimal [note: 'Total price of the order']
   shipping_address varchar [note: 'Shipping address of the order']

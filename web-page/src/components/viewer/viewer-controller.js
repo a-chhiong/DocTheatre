@@ -142,8 +142,14 @@ export class ViewerController {
     }
     const projectName = this.getProjectName();
 
+    let scope = null;
+    if (isDbml && container) {
+      const dbmlViewer = container.querySelector('#active-dbml-viewer') || container.querySelector('dbml-viewer');
+      if (dbmlViewer) scope = dbmlViewer.activeEntityPath;
+    }
+
     if (isMarkdown || isDbml) {
-      exporterService.exportMarkdownHTML(projectName, this.host.activeFile, renderedHtml);
+      exporterService.exportMarkdownHTML(projectName, this.host.activeFile, renderedHtml, scope);
     } else if (isPuml || isMermaid) {
       exporterService.exportDiagramHTML(projectName, this.host.activeFile, renderedHtml);
     } else {
@@ -185,7 +191,14 @@ export class ViewerController {
       }
       exporterService.exportSwaggerPDF(projectName, this.host.activeFile, spec);
     } else {
-      window.print();
+      let scope = null;
+      const path = this.host.activeFile?.path?.toLowerCase() || '';
+      if (path.endsWith('.dbml')) {
+        const container = this.host.querySelector('#previewer-target');
+        const dbmlViewer = container?.querySelector('#active-dbml-viewer') || container?.querySelector('dbml-viewer');
+        if (dbmlViewer) scope = dbmlViewer.activeEntityPath;
+      }
+      exporterService.exportDocumentPDF(this.getProjectName(), this.host.activeFile, scope);
     }
   }
 

@@ -1,0 +1,70 @@
+/* Column Reference truncation */
+.col-ref-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+/* Column Note Expandable */
+.dbdocs-note-collapsible {
+  margin: 0;
+  padding: 0;
+}
+
+.dbdocs-note-collapsible summary {
+  list-style: none; /* Remove default arrow */
+  cursor: pointer;
+  outline: none;
+}
+
+.dbdocs-note-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.dbdocs-note-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.dbdocs-read-more-pill {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: background 0.15s;
+}
+
+.dbdocs-read-more-pill:hover {
+  background: rgba(var(--accent-color-rgb, 59, 130, 246), 0.08);
+}
+
+.dbdocs-read-more-pill::after {
+  content: "Show more";
+}
+
+details[open].dbdocs-note-collapsible .dbdocs-note-preview {
+  display: none;
+}
+
+details[open].dbdocs-note-collapsible .dbdocs-read-more-pill::after {
+  content: "Show less";
+}
+
+.dbdocs-note-full-content {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
