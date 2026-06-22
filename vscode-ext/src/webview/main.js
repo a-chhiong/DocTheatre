@@ -3,9 +3,11 @@
 // router, zoom, and floating export button.
 
 import './styles/preview.css';
+import './styles/dbdocs.css';
 import { renderMarkdown }   from './renderers/markdown.js';
 import { renderDiagrams }   from './renderers/diagram.js';
 import { renderSwagger }    from './renderers/swagger.js';
+import { renderDbml }       from './renderers/dbml.js';
 import { attachZoom, detachZoom } from './zoom.js';
 import { ExportAction }   from './export-action.js';
 import { handleExport, setContentType, setFileName } from './export.js';
@@ -24,6 +26,7 @@ let _isDark      = false;
 let _contentType = '';
 let _filePath    = '';
 let _content     = '';
+let _activeNodePath = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DOM Bootstrap
@@ -34,12 +37,44 @@ const root = document.getElementById('os-root');
 const toolbar = document.createElement('div');
 toolbar.className = 'os-toolbar';
 toolbar.innerHTML = `
-  <span class="filename" id="os-filename">DocTheatre</span>
-  <span class="badge"   id="os-badge"></span>
+  <div class="dbml-breadcrumb" id="os-filename">
+    <span class="filename">DocTheatre</span>
+  </div>
+
+  <div class="view-switcher" id="os-dbml-switcher" style="display: none;">
+    <button class="view-switcher-btn active" data-mode="doc" title="Document view">DOC</button>
+    <button class="view-switcher-btn" data-mode="erd" title="Diagram view">ERD</button>
+  </div>
+
+  <span class="badge" id="os-badge"></span>
   <span id="os-export-anchor"></span>
   <button class="os-toolbar-btn" id="os-theme-btn" title="Toggle light / dark theme">☀</button>
 `;
 root.appendChild(toolbar);
+
+// DBML View Switcher logic
+document.getElementById('os-dbml-switcher').addEventListener('click', (e) => {
+  if (e.target.tagName === 'BUTTON') {
+    document.querySelectorAll('#os-dbml-switcher button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    window.dispatchEvent(new CustomEvent('dbml-view-mode-changed', { detail: e.target.dataset.mode }));
+  }
+});
+
+// Breadcrumb navigation delegation
+document.getElementById('os-filename').addEventListener('click', (e) => {
+  const item = e.target.closest('.js-breadcrumb-nav');
+  if (item) {
+    const path = item.getAttribute('data-path');
+    window.navigateDbml(path === 'root' ? null : path);
+  }
+});
+
+// Global navigation for Breadcrumbs
+window.navigateDbml = function(path) {
+  _activeNodePath = path;
+  updatePreview(_filePath, _content, _contentType);
+};
 
 // Preview area
 const previewArea = document.createElement('div');
@@ -92,7 +127,15 @@ window.addEventListener('message', ({ data }) => {
       _filePath    = data.path    ?? '';
       _content     = data.content ?? '';
       _contentType = data.contentType ?? '';
+      _activeNodePath = null;
       updatePreview(_filePath, _content, _contentType);
+      break;
+
+    case 'scroll-to-node':
+      if (_contentType === 'dbml') {
+        _activeNodePath = data.path;
+        updatePreview(_filePath, _content, _contentType);
+      }
       break;
 
     case 'trigger-export':
@@ -136,6 +179,14 @@ async function updatePreview(filePath, content, contentType) {
   if (prevDiagramView) { detachZoom(prevDiagramView); }
   previewArea.innerHTML = '';
 
+  // Show or hide the DBML switcher based on contentType
+  const switcher = document.getElementById('os-dbml-switcher');
+  if (contentType === 'dbml') {
+    switcher.style.display = 'flex';
+  } else {
+    switcher.style.display = 'none';
+  }
+
   switch (contentType) {
     case 'markdown':
       await renderMarkdown(previewArea, content, filePath, _isDark);
@@ -173,6 +224,10 @@ async function updatePreview(filePath, content, contentType) {
 
     case 'swagger':
       renderSwagger(previewArea, content, filePath);
+      break;
+
+    case 'dbml':
+      renderDbml(previewArea, content, filePath, _isDark, _activeNodePath);
       break;
 
     default:

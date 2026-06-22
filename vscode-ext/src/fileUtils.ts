@@ -1,6 +1,6 @@
 // ─── File extension / content-type helpers ───────────────────────────────────
 
-export type ContentType = 'markdown' | 'plantuml' | 'mermaid' | 'swagger' | 'unknown';
+export type ContentType = 'markdown' | 'plantuml' | 'mermaid' | 'swagger' | 'dbml' | 'unknown';
 
 const SUPPORTED_EXTENSIONS = new Set([
   '.md', '.markdown',
@@ -8,6 +8,7 @@ const SUPPORTED_EXTENSIONS = new Set([
   '.mmd', '.mermaid',
   '.yaml', '.yml',
   '.json',
+  '.dbml',
 ]);
 
 /**
@@ -34,6 +35,8 @@ export function getContentType(filePath: string): ContentType {
     case '.mmd':
     case '.mermaid':
       return 'mermaid';
+    case '.dbml':
+      return 'dbml';
     case '.yaml':
     case '.yml':
     case '.json':

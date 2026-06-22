@@ -35,24 +35,42 @@ export function attachZoom(container) {
     container.appendChild(wrapper);
   }
 
-  // ── Reset button ─────────────────────────────────────────────────────────────
-  // One shared button per webview, attached to document.body with position:fixed.
-  // CSS places it at top: 46px (below the 36px toolbar) right: 14px.
-  let resetBtn = document.getElementById('os-zoom-reset-btn');
-  if (!resetBtn) {
-    resetBtn = document.createElement('button');
-    resetBtn.id          = 'os-zoom-reset-btn';
-    resetBtn.className   = 'os-zoom-reset';
-    resetBtn.textContent = '⟳ Reset';
-    resetBtn.title       = 'Reset zoom to 100%';
-    document.body.appendChild(resetBtn);
+  // ── Floating Zoom Controls ────────────────────────────────────────────────────
+  let zoomControls = document.getElementById('os-zoom-controls');
+  if (!zoomControls) {
+    zoomControls = document.createElement('div');
+    zoomControls.id = 'os-zoom-controls';
+    zoomControls.className = 'os-zoom-controls';
+    zoomControls.innerHTML = `
+      <button class="os-zoom-btn" id="os-zoom-in" title="Zoom In">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+      <button class="os-zoom-btn" id="os-zoom-reset" title="Reset Zoom">100%</button>
+      <button class="os-zoom-btn" id="os-zoom-out" title="Zoom Out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+    `;
+    document.body.appendChild(zoomControls);
+
+    document.getElementById('os-zoom-in').addEventListener('click', () => {
+      const activeContainer = document.querySelector('.os-preview .mermaid');
+      if (activeContainer) _applyZoom(activeContainer, Math.min(MAX_ZOOM, (zoomState.get(activeContainer)?.level || 1) + 0.25));
+    });
+    
+    document.getElementById('os-zoom-out').addEventListener('click', () => {
+      const activeContainer = document.querySelector('.os-preview .mermaid');
+      if (activeContainer) _applyZoom(activeContainer, Math.max(MIN_ZOOM, (zoomState.get(activeContainer)?.level || 1) - 0.25));
+    });
+    
+    document.getElementById('os-zoom-reset').addEventListener('click', () => {
+      const activeContainer = document.querySelector('.os-preview .mermaid');
+      if (activeContainer) _applyZoom(activeContainer, 1);
+    });
   }
 
   // naturalW / naturalH are lazily measured on the first zoom gesture so that
   // layout is guaranteed to be settled after async diagram rendering.
-  zoomState.set(container, { level: 1, naturalW: 0, naturalH: 0, resetBtn, wrapper });
-
-  resetBtn.addEventListener('click', () => _applyZoom(container, 1));
+  zoomState.set(container, { level: 1, naturalW: 0, naturalH: 0, wrapper });
 
   container.addEventListener('wheel', e => {
     if (!e.ctrlKey && !e.metaKey) { return; }
@@ -71,7 +89,7 @@ function _applyZoom(container, level) {
   const state = zoomState.get(container);
   if (!state) { return; }
 
-  const { wrapper, resetBtn } = state;
+  const { wrapper } = state;
 
   // Lazily capture natural (un-scaled) dimensions.
   // We temporarily clear any existing transform so getBoundingClientRect()
@@ -102,7 +120,6 @@ function _applyZoom(container, level) {
     // Reset naturalW so next zoom interaction re-measures fresh content
     state.naturalW = 0;
     state.naturalH = 0;
-    resetBtn.classList.remove('visible');
     return;
   }
 
@@ -121,8 +138,6 @@ function _applyZoom(container, level) {
   wrapper.style.height   = `${h}px`;
   wrapper.style.minWidth  = `${w}px`;
   wrapper.style.minHeight = `${h}px`;
-
-  resetBtn.classList.add('visible');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,7 +148,5 @@ function _applyZoom(container, level) {
  */
 export function detachZoom(container) {
   container.__osZoomAttached = false;
-  const state = zoomState.get(container);
-  if (state?.resetBtn) { state.resetBtn.classList.remove('visible'); }
   zoomState.delete(container);
 }

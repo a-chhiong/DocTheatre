@@ -24,7 +24,8 @@
   "activationEvents": [
     "onCommand:doctheatre.openPreview",
     "onLanguage:mermaid",
-    "onLanguage:plantuml"
+    "onLanguage:plantuml",
+    "onLanguage:dbml"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -114,13 +115,35 @@
         "command": "doctheatre.exportPDF",
         "title": "DocTheatre: Export as PDF",
         "icon": "$(file-pdf)"
+      },
+      {
+        "command": "doctheatre.scrollToNode",
+        "title": "DocTheatre: Scroll to Node",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "doctheatre.toggleDbmlGrouping",
+        "title": "DocTheatre: Toggle Grouping",
+        "icon": "$(list-flat)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": []
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "doctheatre-dbml-structure",
+          "name": "OUTLINE DBML",
+          "when": "doctheatre.contentType == 'dbml' && doctheatre.previewActive"
+        }
+      ]
+    },
     "menus": {
       "editor/title": [
         {
           "command": "doctheatre.openPreview",
-          "when": "resourceExtname =~ /^\\.(md|markdown|puml|plantuml|pu|mmd|mermaid|yaml|yml|json)$/",
+          "when": "resourceExtname =~ /^\\.(md|markdown|puml|plantuml|pu|mmd|mermaid|yaml|yml|json|dbml)$/",
           "group": "navigation@1"
         },
         {
@@ -161,6 +184,13 @@
           "command": "doctheatre.exportPDF",
           "when": "doctheatre.previewActive"
         }
+      ],
+      "view/title": [
+        {
+          "command": "doctheatre.toggleDbmlGrouping",
+          "when": "view == doctheatre-dbml-structure",
+          "group": "navigation"
+        }
       ]
     },
     "keybindings": [
@@ -168,7 +198,7 @@
         "command": "doctheatre.openPreview",
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
-        "when": "resourceExtname =~ /^\\.(md|markdown|puml|plantuml|pu|mmd|mermaid|yaml|yml|json)$/"
+        "when": "resourceExtname =~ /^\\.(md|markdown|puml|plantuml|pu|mmd|mermaid|yaml|yml|json|dbml)$/"
       }
     ]
   },
@@ -192,8 +222,10 @@
     "typescript": "^5.4.0"
   },
   "dependencies": {
+    "@dbml/core": "^8.3.0",
     "highlight.js": "^11.11.1",
     "js-yaml": "^4.1.0",
+    "lit": "^3.1.2",
     "marked": "^12.0.1",
     "mermaid": "^10.9.0",
     "rapipdf": "^2.2.1",
