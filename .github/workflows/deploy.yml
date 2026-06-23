@@ -29,10 +29,9 @@ jobs:
           node-version: 20
           cache: 'npm'
           # Tells the cache action where to find package-lock.json
-          cache-dependency-path: web-page/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: web-page
         run: npm ci
 
       - name: Build

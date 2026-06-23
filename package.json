@@ -5,5 +5,8 @@
     "web-page",
     "vscode-ext",
     "packages/*"
-  ]
+  ],
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
 }
