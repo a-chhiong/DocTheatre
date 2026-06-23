@@ -101,6 +101,7 @@ dbml-viewer {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
   background: var(--bg-primary);
+  overflow: hidden;
 }
 
 .table-section > summary {
@@ -108,18 +109,15 @@ dbml-viewer {
   font-weight: 600;
   padding: 0.75rem 1rem;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
   list-style-position: outside;
   font-size: 0.9rem;
+  border-bottom: none;
+  transition: background 0.15s;
 }
 
-.table-section > summary::marker {
-  font-size: 0.8rem;
-  transition: transform 0.2s;
-}
-
-.table-section.collapsed > summary::marker {
-  transform: rotate(-90deg);
+/* Show the bottom border under the summary header only when the section is expanded */
+.table-section[open] > summary {
+  border-bottom: 1px solid var(--border-color);
 }
 
 .table-section > summary:hover {
@@ -749,25 +747,27 @@ dbml-viewer {
   color: var(--text-secondary);
 }
 
-.dbdocs-note-icon-btn {
+.dbdocs-note-text-btn {
   background: transparent;
   border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
-  color: var(--text-muted, var(--text-secondary));
+  display: inline-block;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.dbdocs-note-icon-btn:hover {
+.dbdocs-note-text-btn:hover {
   color: var(--accent-color);
-}
-
-.dbdocs-note-icon {
-  width: 18px;
-  height: 18px;
+  text-decoration: underline;
 }
 
 /* HTML Dialog Modal */

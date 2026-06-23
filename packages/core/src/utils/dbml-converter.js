@@ -10,6 +10,25 @@ function cleanMermaidType(typeName) {
 }
 
 /**
+ * Helper to extract a plain text preview from markdown/text
+ */
+function getNotePreview(noteText, limit = 40) {
+  if (!noteText) return '';
+  // Strip common markdown elements to leave clean text preview
+  let plainText = noteText
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // link text
+    .replace(/`([^`]+)`/g, '$1')             // inline code
+    .replace(/[*_~#\-+]/g, '')               // format markup
+    .replace(/\s+/g, ' ')                    // normalize spaces
+    .trim();
+
+  if (plainText.length > limit) {
+    return plainText.substring(0, limit).trim() + '...';
+  }
+  return plainText || 'View Note';
+}
+
+/**
  * Map DBML endpoint relations to Mermaid ER cardinality notation
  */
 function getMermaidRelation(rel1, rel2) {
@@ -466,7 +485,7 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
 
         const isEnum = enumNames.has(field.type.type_name);
         const typeHtml = isEnum
-          ? `<span style="white-space: nowrap;"><span class="dbdocs-badge dbdocs-badge-enum">E</span><span class="col-type">${field.type.type_name}</span></span>`
+          ? `<span style="white-space: nowrap;"><span class="col-type">${field.type.type_name}</span><span class="dbdocs-badge dbdocs-badge-enum" style="margin-left: 4px; margin-right: 0;">E</span></span>`
           : `<span class="col-type">${field.type.type_name}</span>`;
 
         const settings = [];
@@ -509,13 +528,12 @@ export function compileDbmlToMarkdown(database, entrypointName, activeNodePath, 
         let noteHtml = '';
         if (field.note) {
           const modalId = `modal-${sName}-${table.name}-${field.name}`.replace(/[^a-zA-Z0-9-]/g, '-');
-          const mdIcon = `<svg class="dbdocs-note-icon" aria-hidden="true" focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><path fill="currentColor" d="M593.8 59.1H46.2C20.7 59.1 0 79.8 0 105.2v301.5c0 25.5 20.7 46.2 46.2 46.2h547.7c25.5 0 46.2-20.7 46.1-46.1V105.2c0-25.4-20.7-46.1-46.2-46.1zM338.5 360.6H277v-120l-61.5 76.9-61.5-76.9v120H92.3V151.4h61.5l61.5 76.9 61.5-76.9h61.5v209.2zm135.3 3.1L381.5 256H443V151.4h61.5V256H566z"></path></svg>`;
-          
+          const notePreview = getNotePreview(field.note, 35);
           const compiledNote = marked.parse(field.note).replace(/\n/g, ' ');
 
-          let rawNoteHtml = `<button class="dbdocs-note-icon-btn" title="View Note" onclick="document.getElementById('${modalId}').showModal()">${mdIcon}</button>`;
-          rawNoteHtml += `<dialog id="${modalId}" class="dbdocs-modal" onclick="if(event.target===this)this.close()">`;
-          rawNoteHtml += `<div class="dbdocs-modal-header"><h4>Note: ${field.name}</h4><button class="dbdocs-modal-close" onclick="this.closest('dialog').close()">&times;</button></div>`;
+          let rawNoteHtml = `<button class="dbdocs-note-text-btn" title="View full note">${notePreview}</button>`;
+          rawNoteHtml += `<dialog id="${modalId}" class="dbdocs-modal">`;
+          rawNoteHtml += `<div class="dbdocs-modal-header"><h4>Note: ${field.name}</h4><button class="dbdocs-modal-close">&times;</button></div>`;
           rawNoteHtml += `<div class="dbdocs-modal-body">${compiledNote}</div></dialog>`;
           
           noteHtml = rawNoteHtml;

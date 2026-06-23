@@ -250,7 +250,7 @@ export class DbmlViewer extends LitElement {
     setTimeout(() => toast.remove(), 3000);
   }
 
-  // Handle copy and link clicks from rendered content
+  // Handle copy, link, and modal note clicks from rendered content
   _handleContentClick(e) {
     // 1. Handle copy
     const btn = e.target.closest('.copy-btn');
@@ -286,6 +286,35 @@ export class DbmlViewer extends LitElement {
       
       this.requestUpdate();
       this.renderContent();
+      return;
+    }
+
+    // 3. Handle column note dialog opening (bypasses CSP on inline onclick)
+    const noteBtn = e.target.closest('.dbdocs-note-text-btn') || e.target.closest('.dbdocs-note-icon-btn');
+    if (noteBtn) {
+      e.preventDefault();
+      const dialog = noteBtn.nextElementSibling;
+      if (dialog && dialog.tagName === 'DIALOG') {
+        dialog.showModal();
+      }
+      return;
+    }
+
+    // 4. Handle column note dialog close button (bypasses CSP on inline onclick)
+    const closeBtn = e.target.closest('.dbdocs-modal-close');
+    if (closeBtn) {
+      e.preventDefault();
+      const dialog = closeBtn.closest('dialog');
+      if (dialog) {
+        dialog.close();
+      }
+      return;
+    }
+
+    // 5. Handle dialog backdrop click to close (bypasses CSP on inline onclick)
+    const dialog = e.target.closest('dialog.dbdocs-modal');
+    if (dialog && e.target === dialog) {
+      dialog.close();
     }
   }
 

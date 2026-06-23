@@ -146,10 +146,6 @@ Table core.users {
   created_at timestamp [note: 'When user created']
   country_code int [note: 'Country of the user']
 
-  Note: '''
-  The users table stores information about each user registered on the platform. It includes personal details, authentication credentials, and metadata about account creation and activity.
-  '''
-
   // NOTE: The "records" syntax is an official DBML feature.
   // However, the upstream @dbml/core parser currently throws a SyntaxError 
   // when parsing it. Once supported by @dbml/core, you can define sample data:
@@ -159,6 +155,16 @@ Table core.users {
     2, 'Bob', 'bob@example.com', 'bob_2', 'hash456', '555-0102', '2026-06-20', 'http://example.com/b.png', '2026-01-02', 1
   }
   */
+
+  Note: '''
+  ## User Table
+  The users table stores information about each user registered on the platform. It includes personal details, authentication credentials, and metadata about account creation and activity.
+
+  ## Insert Code Example
+  \`\`\`
+  INSERT INTO core.users (full_name, email, username, password) VALUES ('Alice Brown', 'alice@example.com', 'alicebrown', 'hashedpassword');
+  \`\`\`
+  '''
 }
 
 Table core.order_items {
@@ -179,7 +185,13 @@ Table core.order_items {
 Table core.orders {
   id int [pk, note: 'Id of the order']
   user_id int [not null, unique]
-  status orders_status [default: 'pending', note: 'Status of the order:  pending processing shipped canceled']
+  status orders_status [default: 'pending', 
+  note: '''Status of the order:  
+  - pending 
+  - processing 
+  - shipped 
+  - canceled
+  ''']
   created_at varchar [note: 'When order created']
   total_price decimal [note: 'Total price of the order']
   shipping_address varchar [note: 'Shipping address of the order']
