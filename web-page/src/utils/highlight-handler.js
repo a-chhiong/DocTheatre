@@ -406,6 +406,7 @@ const dbmlLanguage = StreamLanguage.define({
   startState() {
     return {
       inBlockComment: false,
+      inTripleString: false,
       // Tracks context for identifier-pair matching (official grammar behavior):
       //   "afterStructureKw" → next identifier is entity.name (table/enum name)
       //   "afterIdentifier"  → next word could be a type keyword (column type)
@@ -422,6 +423,23 @@ const dbmlLanguage = StreamLanguage.define({
         stream.skipToEnd();
       }
       return "comment";
+    }
+
+    // Reset identifier-pair context at line boundaries.
+    // The TextMate grammar's identifier-pair regex (word1\s+word2) never spans lines,
+    // so "afterIdentifier" context must not carry over to the next line.
+    if (stream.sol()) {
+      state.context = null;
+    }
+
+    // ── Triple-quoted string continuation ──
+    if (state.inTripleString) {
+      if (stream.match(/.*?'''/)) {
+        state.inTripleString = false;
+      } else {
+        stream.skipToEnd();
+      }
+      return "string";
     }
 
     if (stream.eatSpace()) return null;
@@ -443,12 +461,19 @@ const dbmlLanguage = StreamLanguage.define({
     }
 
     // ── Triple-quoted strings '''...''' ──
-    if (stream.match(/^'''[\s\S]*?'''/)) {
+    if (stream.match(/^'''/)) {
+      // Check if closing ''' is on the same line
+      if (stream.match(/.*?'''/)) {
+        return "string";
+      }
+      // Otherwise, consume rest of line and enter multi-line string state
+      stream.skipToEnd();
+      state.inTripleString = true;
       return "string";
     }
 
     // ── Strings (double, single, backtick) ──
-    if (stream.match(/^"[^"]*"/) || stream.match(/^'[^']*'/) || stream.match(/^`[^`]*`/)) {
+    if (stream.match(/^"(?:[^"\\]|\\.)*"/) || stream.match(/^'(?:[^'\\]|\\.)*'/) || stream.match(/^`(?:[^`\\]|\\.)*`/)) {
       return "string";
     }
 
@@ -469,11 +494,11 @@ const dbmlLanguage = StreamLanguage.define({
     }
 
     // ── Punctuation (TextMate: punctuation.* → foreground) ──
+    // ALL punctuation resets context — the TM grammar's identifier-pair regex
+    // requires word1\s+word2 (whitespace between). Any punctuation between
+    // two words means they are NOT an identifier pair.
     if (stream.match(/^[{}()\[\],.:]/) ) {
-      // Reset context on certain punctuation
-      if (stream.current() === '{' || stream.current() === '[' || stream.current() === ',') {
-        state.context = null;
-      }
+      state.context = null;
       return null;
     }
 
