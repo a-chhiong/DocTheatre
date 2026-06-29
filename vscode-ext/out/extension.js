@@ -40,6 +40,7 @@ var path4 = __toESM(require("path"));
 // src/PreviewPanel.ts
 var vscode = __toESM(require("vscode"));
 var path3 = __toESM(require("path"));
+var fs3 = __toESM(require("fs"));
 
 // src/fileUtils.ts
 function getContentType(filePath) {
@@ -73,7 +74,7 @@ function getExt(filePath) {
 // src/resolvers/markdown.ts
 var path = __toESM(require("path"));
 var fs = __toESM(require("fs"));
-function preprocessMarkdownImports(content, basePath, visited = /* @__PURE__ */ new Set()) {
+function preprocessMarkdownImports(content, basePath, resolveLink, visited = /* @__PURE__ */ new Set()) {
   if (!content) {
     return "";
   }
@@ -84,15 +85,30 @@ function preprocessMarkdownImports(content, basePath, visited = /* @__PURE__ */ 
   nextVisited.add(basePath);
   let processed = content.replace(/^@import\s+['"]?([^'"]+)['"]?\s*$/gm, (match, relPath) => {
     const resolvedPath = path.resolve(path.dirname(basePath), relPath);
-    return getImportedContent(resolvedPath, relPath, nextVisited);
+    return getImportedContent(resolvedPath, relPath, resolveLink, nextVisited);
   });
   processed = processed.replace(/!\[\[(.*?)\]\]/g, (match, relPath) => {
     const resolvedPath = path.resolve(path.dirname(basePath), relPath);
-    return getImportedContent(resolvedPath, relPath, nextVisited);
+    return getImportedContent(resolvedPath, relPath, resolveLink, nextVisited);
   });
+  if (resolveLink) {
+    processed = processed.replace(/(!\[[^\]]*\]\()\s*([^\s)]+)(?:\s+["']([^"']*)["'])?\s*(\))/g, (match, before, url, title, after) => {
+      const resolved = resolveLink(url, basePath);
+      const titleStr = title ? ` "${title}"` : "";
+      return `${before}${resolved}${titleStr}${after}`;
+    });
+    processed = processed.replace(/^(\[[^\]]+\]:\s*)([^\s"'\n]+)/gm, (match, before, url) => {
+      const resolved = resolveLink(url, basePath);
+      return `${before}${resolved}`;
+    });
+    processed = processed.replace(/(<img\s+[^>]*src=["'])([^"']+)(["'])/gi, (match, before, url, after) => {
+      const resolved = resolveLink(url, basePath);
+      return `${before}${resolved}${after}`;
+    });
+  }
   return processed;
 }
-function getImportedContent(resolvedPath, originalPath, visited) {
+function getImportedContent(resolvedPath, originalPath, resolveLink, visited = /* @__PURE__ */ new Set()) {
   if (!fs.existsSync(resolvedPath)) {
     return `*Error: Imported file not found at "${originalPath}"*`;
   }
@@ -100,7 +116,7 @@ function getImportedContent(resolvedPath, originalPath, visited) {
     const content = fs.readFileSync(resolvedPath, "utf8");
     const ext = path.extname(resolvedPath).toLowerCase().replace(/^\./, "");
     if (ext === "md" || ext === "markdown") {
-      return preprocessMarkdownImports(content, resolvedPath, visited);
+      return preprocessMarkdownImports(content, resolvedPath, resolveLink, visited);
     }
     let lang = ext;
     if (ext === "puml" || ext === "plantuml" || ext === "pu") {
@@ -2618,16 +2634,21 @@ var PreviewPanel = class _PreviewPanel {
       return;
     }
     const initialDocument = vscode.window.activeTextEditor?.document;
+    const localResourceRoots = [
+      vscode.Uri.joinPath(extensionUri, "out", "webview"),
+      vscode.Uri.joinPath(extensionUri, "media"),
+      ...(vscode.workspace.workspaceFolders || []).map((folder) => folder.uri)
+    ];
+    if (initialDocument) {
+      localResourceRoots.push(vscode.Uri.file(path3.dirname(initialDocument.uri.fsPath)));
+    }
     const panel = vscode.window.createWebviewPanel(
       _PreviewPanel.viewType,
       "Spectre Preview",
       { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       {
         enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(extensionUri, "out", "webview"),
-          vscode.Uri.joinPath(extensionUri, "media")
-        ],
+        localResourceRoots,
         retainContextWhenHidden: true
       }
     );
@@ -2665,7 +2686,32 @@ var PreviewPanel = class _PreviewPanel {
     vscode.commands.executeCommand("setContext", "spectre.contentType", contentType);
     let content = doc.getText();
     if (contentType === "markdown") {
-      content = preprocessMarkdownImports(content, filePath);
+      const resolveLink = (relPath, currentBasePath) => {
+        if (/^(https?|data|blob):/i.test(relPath)) {
+          return relPath;
+        }
+        try {
+          let absolutePath = relPath;
+          if (!path3.isAbsolute(relPath)) {
+            absolutePath = path3.resolve(path3.dirname(currentBasePath), relPath);
+          }
+          if (fs3.existsSync(absolutePath)) {
+            return this._panel.webview.asWebviewUri(vscode.Uri.file(absolutePath)).toString();
+          }
+          if (path3.isAbsolute(relPath) && vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+              const joinedPath = path3.join(folder.uri.fsPath, relPath);
+              if (fs3.existsSync(joinedPath)) {
+                return this._panel.webview.asWebviewUri(vscode.Uri.file(joinedPath)).toString();
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[Spectre] Failed to resolve relative image path:", relPath, err);
+        }
+        return relPath;
+      };
+      content = preprocessMarkdownImports(content, filePath, resolveLink);
     } else if (contentType === "swagger") {
       content = preprocessOpenApiRefs(content, filePath);
     }
@@ -2815,10 +2861,10 @@ var PreviewPanel = class _PreviewPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none';
-             script-src 'nonce-${nonce}' ${webview.cspSource} 'unsafe-eval' https://unpkg.com;
-             style-src 'unsafe-inline' ${webview.cspSource} https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com;
-             img-src ${webview.cspSource} data: blob: https://unpkg.com;
-             font-src ${webview.cspSource} https://fonts.gstatic.com https://unpkg.com;
+             script-src 'nonce-${nonce}' ${webview.cspSource} 'unsafe-eval';
+             style-src 'unsafe-inline' ${webview.cspSource};
+             img-src ${webview.cspSource} data: blob: https: http:;
+             font-src ${webview.cspSource};
              connect-src ${webview.cspSource} blob:;">
   <title>Spectre Preview</title>
   <link rel="stylesheet" href="${cssUri}">

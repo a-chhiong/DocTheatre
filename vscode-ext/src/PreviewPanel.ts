@@ -50,16 +50,23 @@ export class PreviewPanel {
     // even with preserveFocus:true, causing the first _pushActiveEditor() to no-op.
     const initialDocument = vscode.window.activeTextEditor?.document;
 
+    const localResourceRoots = [
+      vscode.Uri.joinPath(extensionUri, 'out', 'webview'),
+      vscode.Uri.joinPath(extensionUri, 'media'),
+      ...(vscode.workspace.workspaceFolders || []).map(folder => folder.uri),
+    ];
+
+    if (initialDocument) {
+      localResourceRoots.push(vscode.Uri.file(path.dirname(initialDocument.uri.fsPath)));
+    }
+
     const panel = vscode.window.createWebviewPanel(
       PreviewPanel.viewType,
       'Spectre Preview',
       { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       {
         enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(extensionUri, 'out', 'webview'),
-          vscode.Uri.joinPath(extensionUri, 'media'),
-        ],
+        localResourceRoots,
         retainContextWhenHidden: true,
       }
     );
@@ -159,7 +166,33 @@ export class PreviewPanel {
 
     let content = doc.getText();
     if (contentType === 'markdown') {
-      content = preprocessMarkdownImports(content, filePath);
+      const resolveLink = (relPath: string, currentBasePath: string) => {
+        if (/^(https?|data|blob):/i.test(relPath)) {
+          return relPath;
+        }
+        try {
+          let absolutePath = relPath;
+          if (!path.isAbsolute(relPath)) {
+            absolutePath = path.resolve(path.dirname(currentBasePath), relPath);
+          }
+          if (fs.existsSync(absolutePath)) {
+            return this._panel.webview.asWebviewUri(vscode.Uri.file(absolutePath)).toString();
+          }
+          // Handle workspace-root-relative absolute paths (e.g. /images/pic.png)
+          if (path.isAbsolute(relPath) && vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+              const joinedPath = path.join(folder.uri.fsPath, relPath);
+              if (fs.existsSync(joinedPath)) {
+                return this._panel.webview.asWebviewUri(vscode.Uri.file(joinedPath)).toString();
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Spectre] Failed to resolve relative image path:', relPath, err);
+        }
+        return relPath;
+      };
+      content = preprocessMarkdownImports(content, filePath, resolveLink);
     } else if (contentType === 'swagger') {
       // Inline all external $ref files in Node.js (where fs is available).
       // Swagger UI inside the webview would try to fetch() them, which is
@@ -341,10 +374,10 @@ export class PreviewPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none';
-             script-src 'nonce-${nonce}' ${webview.cspSource} 'unsafe-eval' https://unpkg.com;
-             style-src 'unsafe-inline' ${webview.cspSource} https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com;
-             img-src ${webview.cspSource} data: blob: https://unpkg.com;
-             font-src ${webview.cspSource} https://fonts.gstatic.com https://unpkg.com;
+             script-src 'nonce-${nonce}' ${webview.cspSource} 'unsafe-eval';
+             style-src 'unsafe-inline' ${webview.cspSource};
+             img-src ${webview.cspSource} data: blob: https: http:;
+             font-src ${webview.cspSource};
              connect-src ${webview.cspSource} blob:;">
   <title>Spectre Preview</title>
   <link rel="stylesheet" href="${cssUri}">
