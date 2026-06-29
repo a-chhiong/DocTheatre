@@ -146,7 +146,7 @@ export class ExtensionApp extends LitElement {
     if (ct === 'plantuml' || ct === 'mermaid') {
       return html`
         <diagram-viewer
-          class="diagram-preview ${ct}-preview"
+          class="${ct}-preview"
           .code=${this.activeFile.content || ''}
           .type=${ct}
           .theme=${this.theme}

@@ -37,6 +37,9 @@ diagram-viewer.diagram-preview .diagram-viewer-container {
 .diagram-viewer-canvas {
   position: absolute;
   transform-origin: 0 0;
+}
+
+.diagram-viewer-viewport.is-dragging .diagram-viewer-canvas {
   will-change: transform;
 }
 

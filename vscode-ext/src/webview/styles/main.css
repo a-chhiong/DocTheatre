@@ -84,7 +84,7 @@ body,
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   flex-shrink: 0;
-  height: 36px;
+  height: 30px;
   user-select: none;
   z-index: 300;
 }
@@ -318,11 +318,11 @@ body.show-zoom-controls .os-zoom-controls {
 
 /* ── Zoom reset button ──────────────────────────────────────────────────────────── */
 /* position:fixed keeps the button anchored to the viewport (not the scrolling
-   diagram content). top:46px = 36px toolbar + 10px gap; right:14px matches
+   diagram content). top:40px = 30px toolbar + 10px gap; right:14px matches
    the old absolute position at the top-right corner of the preview area. */
 .os-zoom-reset {
   position: fixed;
-  top: 46px;
+  top: 40px;
   right: 14px;
   background: var(--os-bg-secondary);
   border: 1px solid var(--os-border);

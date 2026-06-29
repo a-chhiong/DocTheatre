@@ -71,11 +71,16 @@ export class ToolBar extends LitElement {
     }
 
     .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      height: 18px;
       font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      padding: 2px 7px;
+      padding: 0 8px;
       border-radius: 999px;
       background: var(--bg-tertiary);
       color: var(--text-secondary);

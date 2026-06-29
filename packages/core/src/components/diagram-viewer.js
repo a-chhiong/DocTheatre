@@ -65,6 +65,8 @@ export class DiagramViewer extends LitElement {
     this.scale = 1.0;
     this.translateX = 0;
     this.translateY = 0;
+    this._nativeWidth = null;
+    this._nativeHeight = null;
 
     const canvas = this.renderRoot.querySelector('.diagram-viewer-canvas');
     if (canvas) {
@@ -103,12 +105,50 @@ export class DiagramViewer extends LitElement {
     }
   }
 
+  _getSVGDimensions() {
+    if (this._nativeWidth && this._nativeHeight) {
+      return { width: this._nativeWidth, height: this._nativeHeight };
+    }
+
+    const canvas = this.renderRoot.querySelector('.diagram-viewer-canvas');
+    const svg = canvas?.querySelector('svg');
+    if (!svg) {
+      return { width: 800, height: 600 }; // Ultimate fallback if SVG doesn't exist
+    }
+
+    let svgWidth = 0;
+    let svgHeight = 0;
+
+    const viewBoxAttr = svg.getAttribute('viewBox');
+    if (viewBoxAttr) {
+      const parts = viewBoxAttr.split(/[\s,]+/).map(Number);
+      svgWidth = parts[2];
+      svgHeight = parts[3];
+    }
+
+    // Fallback: use intrinsic/computed dimensions
+    if (!svgWidth || !svgHeight) {
+      const bbox = svg.getBBox ? svg.getBBox() : null;
+      if (bbox && bbox.width > 0 && bbox.height > 0) {
+        svgWidth = bbox.width + bbox.x;
+        svgHeight = bbox.height + bbox.y;
+      } else {
+        svgWidth = svg.clientWidth || 800;
+        svgHeight = svg.clientHeight || 600;
+      }
+    }
+
+    this._nativeWidth = svgWidth;
+    this._nativeHeight = svgHeight;
+    return { width: svgWidth, height: svgHeight };
+  }
+
   applyTransform(smooth = false) {
     const canvas = this.renderRoot.querySelector('.diagram-viewer-canvas');
     if (!canvas) return;
 
     if (smooth) {
-      canvas.style.transition = 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+      canvas.style.transition = 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s cubic-bezier(0.4, 0, 0.2, 1), height 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
       // Clear transition after animation to prevent lag during dragging
       setTimeout(() => {
         if (canvas.style.transition.includes('transform')) {
@@ -119,7 +159,10 @@ export class DiagramViewer extends LitElement {
       canvas.style.transition = 'none';
     }
 
-    canvas.style.transform = `translate3d(${this.translateX}px, ${this.translateY}px, 0) scale(${this.scale})`;
+    const { width, height } = this._getSVGDimensions();
+    canvas.style.width = `${width * this.scale}px`;
+    canvas.style.height = `${height * this.scale}px`;
+    canvas.style.transform = `translate(${this.translateX}px, ${this.translateY}px)`;
   }
 
   fitToScreen() {
@@ -154,36 +197,13 @@ export class DiagramViewer extends LitElement {
     svg.removeAttribute('width');
     svg.removeAttribute('height');
 
-    let svgWidth = 0;
-    let svgHeight = 0;
-
-    const viewBoxAttr = svg.getAttribute('viewBox');
-    if (viewBoxAttr) {
-      const parts = viewBoxAttr.split(/[\s,]+/).map(Number);
-      svgWidth = parts[2];
-      svgHeight = parts[3];
-    }
-
-    // Fallback: use intrinsic/computed dimensions
-    if (!svgWidth || !svgHeight) {
-      const bbox = svg.getBBox ? svg.getBBox() : null;
-      if (bbox && bbox.width > 0 && bbox.height > 0) {
-        svgWidth = bbox.width + bbox.x;
-        svgHeight = bbox.height + bbox.y;
-      } else {
-        svgWidth = svg.clientWidth || 800;
-        svgHeight = svg.clientHeight || 600;
-      }
-    }
+    const { width: svgWidth, height: svgHeight } = this._getSVGDimensions();
 
     const viewportWidth = viewport.clientWidth;
     const viewportHeight = viewport.clientHeight;
 
     if (viewportWidth === 0 || viewportHeight === 0) return;
 
-    // Standardize canvas dimensions to match the SVG size
-    canvas.style.width = `${svgWidth}px`;
-    canvas.style.height = `${svgHeight}px`;
     svg.style.width = '100%';
     svg.style.height = '100%';
     svg.style.maxWidth = 'none';
@@ -210,26 +230,7 @@ export class DiagramViewer extends LitElement {
     const svg = canvas.querySelector('svg');
     if (!svg) return;
 
-    let svgWidth = 0;
-    let svgHeight = 0;
-
-    const viewBoxAttr = svg.getAttribute('viewBox');
-    if (viewBoxAttr) {
-      const parts = viewBoxAttr.split(/[\s,]+/).map(Number);
-      svgWidth = parts[2];
-      svgHeight = parts[3];
-    }
-
-    if (!svgWidth || !svgHeight) {
-      const bbox = svg.getBBox ? svg.getBBox() : null;
-      if (bbox && bbox.width > 0 && bbox.height > 0) {
-        svgWidth = bbox.width + bbox.x;
-        svgHeight = bbox.height + bbox.y;
-      } else {
-        svgWidth = svg.clientWidth || 800;
-        svgHeight = svg.clientHeight || 600;
-      }
-    }
+    const { width: svgWidth, height: svgHeight } = this._getSVGDimensions();
 
     const viewportWidth = viewport.clientWidth;
     const viewportHeight = viewport.clientHeight;
@@ -281,6 +282,7 @@ export class DiagramViewer extends LitElement {
     const viewport = this.renderRoot.querySelector('.diagram-viewer-viewport');
     if (viewport) {
       viewport.setPointerCapture(e.pointerId);
+      viewport.classList.add('is-dragging');
     }
   }
 
@@ -302,6 +304,7 @@ export class DiagramViewer extends LitElement {
     const viewport = this.renderRoot.querySelector('.diagram-viewer-viewport');
     if (viewport) {
       viewport.releasePointerCapture(e.pointerId);
+      viewport.classList.remove('is-dragging');
     }
   }
 
